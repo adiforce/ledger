@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.6.2';
+const VERSION = '1.7.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -28,6 +28,22 @@ function defaultCategories() {
     });
   }
   return out;
+}
+
+/* ── 分類圖示：用預設大類的 ID 對應 emoji 與色調 ── */
+const CAT_LOOK = {
+  'exp-00': ['🍜', '#f97316'], 'exp-01': ['🚗', '#3b82f6'], 'exp-02': ['🏠', '#8b5cf6'], 'exp-03': ['💡', '#eab308'],
+  'exp-04': ['🛍️', '#ec4899'], 'exp-05': ['🎮', '#22c55e'], 'exp-06': ['💊', '#14b8a6'], 'exp-07': ['🎁', '#ef4444'],
+  'exp-08': ['🧒', '#84cc16'], 'exp-09': ['🐱', '#b45309'], 'exp-10': ['📦', '#64748b'], 'inc-00': ['💰', '#16a34a'],
+};
+function catLook(rootId) {
+  const c = S.catById.get(rootId);
+  const rid = c && c.parentId ? c.parentId : rootId;
+  return CAT_LOOK[rid] || ['🏷️', '#64748b'];
+}
+function catIcon(rootId, size = '') {
+  const [e, h] = catLook(rootId);
+  return `<span class="ic${size ? ' ' + size : ''}" style="background:${h}26" aria-hidden="true">${e}</span>`;
 }
 
 /* ── 小工具 ── */
@@ -180,10 +196,12 @@ function renderAmount() {
 }
 function renderPicked() {
   const c = S.catById.get(S.subId);
-  $('#picked').textContent = c ? `${catName(c.parentId)} › ${c.name}` : '請選分類';
+  $('#picked').innerHTML = c
+    ? `${catIcon(c.parentId)}<span class="pt">${c.parentId && catName(c.parentId) !== c.name ? `<small>${esc(catName(c.parentId))}</small>` : ''}<b>${esc(c.name)}</b></span>`
+    : '<span class="pt"><small>分類</small><b>請選擇</b></span>';
 }
 function renderTypeToggle() {
-  $('#typeToggle').innerHTML = S.type === 'expense' ? '<b>支出</b>　改記收入' : '<b>收入</b>　改記支出';
+  $('#typeToggle').innerHTML = `<span data-t="expense" class="${S.type === 'expense' ? 'on' : ''}">支出</span><span data-t="income" class="${S.type === 'income' ? 'on inc' : ''}">收入</span>`;
 }
 function renderDate() {
   $('#date').value = S.date;
@@ -194,12 +212,12 @@ function chip(id, on, withParent = true) {
   if (!c) return '';
   const parent = c.parentId ? catName(c.parentId) : '';
   const showParent = withParent && parent && parent !== c.name;
-  return `<button class="chip${on ? ' on' : ''}" data-sub="${esc(id)}">${esc(c.name)}${showParent ? `<small>${esc(parent)}</small>` : ''}</button>`;
+  return `<button class="chip${on ? ' on' : ''}" data-sub="${esc(id)}"><span class="e">${catLook(c.parentId || c.id)[0]}</span>${esc(c.name)}${showParent ? `<small>${esc(parent)}</small>` : ''}</button>`;
 }
 function renderCats() {
-  $('#freqCats').innerHTML = S.freq[S.type].map((id) => chip(id, id === S.subId)).join('');
+  $('#freqCats').innerHTML = S.freq[S.type].map((id) => chip(id, id === S.subId, false)).join('');
   $('#allCats').innerHTML = roots(S.type).map((r) =>
-    `<div class="root">${esc(r.name)}</div><div class="cat-grid">${subsOf(r.id).map((s) => chip(s.id, s.id === S.subId, false)).join('')}</div>`).join('');
+    `<div class="root">${catLook(r.id)[0]} ${esc(r.name)}</div><div class="cat-grid">${subsOf(r.id).map((s) => chip(s.id, s.id === S.subId, false)).join('')}</div>`).join('');
 }
 function renderSugs() {
   const q = $('#note').value.trim();
@@ -396,7 +414,7 @@ function schedRowHTML(t, due) {
   const sub = catName(t.subcategoryId), root = catName(t.categoryId);
   const [y, m, d] = t.date.split('-');
   const dateTxt = `${y !== today().slice(0, 4) ? y + '/' : ''}${Number(m)}/${Number(d)}`;
-  return `<div class="ir sr"><div class="t" data-sedit="${esc(t.id)}">
+  return `<div class="ir sr">${catIcon(t.categoryId)}<div class="t" data-sedit="${esc(t.id)}">
       <div class="c">${dateTxt}　${esc(root !== sub ? `${root} › ${sub}` : sub)}${t.repeat ? `<span class="tag">${REPEAT_LABEL[t.repeat]}</span>` : ''}</div>
       ${t.note ? `<div class="n">${esc(t.note)}</div>` : ''}</div>
     <div class="a${inc ? ' inc' : ''}">${inc ? '+' : ''}${money(t.amount)}</div>
@@ -438,7 +456,7 @@ function rowHTML(t) {
   const root = catName(t.categoryId);
   const title = root !== cname ? `${cname}` : cname;
   return `<div class="rw"><button class="del" data-del="${esc(t.id)}">刪除</button>
-    <div class="row" data-id="${esc(t.id)}"><div class="t"><div class="c">${esc(title)}${t.scheduled ? '<span class="tag">預定</span>' : ''}</div>
+    <div class="row" data-id="${esc(t.id)}">${catIcon(t.categoryId)}<div class="t"><div class="c">${esc(title)}${t.scheduled ? '<span class="tag">預定</span>' : ''}</div>
     ${t.note ? `<div class="n">${esc(t.note)}</div>` : ''}</div>
     <div class="a${inc ? ' inc' : ''}">${inc ? '+' : ''}${money(t.amount)}</div></div></div>`;
 }
@@ -753,7 +771,7 @@ function impRowHTML(t) {
     (t.unmapped ? '<span class="tag warn">分類未對應</span>' : '') + (IMP.ignored.has(t.id) ? '<span class="tag">之前略過</span>' : '');
   const sub = catName(t.subcategoryId), root = catName(t.categoryId);
   return `<label class="ir${on ? '' : ' off'}"><input type="checkbox" data-imp="${esc(t.id)}"${on ? ' checked' : ''}>
-    <div class="t"><div class="c">${esc(root !== sub ? `${root} › ${sub}` : sub)}${tags}</div><div class="n">${esc(t.note || (t.unmapped ? '舊分類：' + t.legacyCategory : ''))}</div></div>
+    ${catIcon(t.categoryId)}<div class="t"><div class="c">${esc(root !== sub ? `${root} › ${sub}` : sub)}${tags}</div><div class="n">${esc(t.note || (t.unmapped ? '舊分類：' + t.legacyCategory : ''))}</div></div>
     <div class="a${inc ? ' inc' : ''}">${inc ? '+' : ''}${money(t.amount)}</div></label>`;
 }
 function renderImport() {
@@ -996,7 +1014,7 @@ function catBarHTML(id, amt, max, total, budget, isSub) {
   const mk = budget && !isSub ? `<div class="mk" style="left:calc(${Math.min(100, budget / max * 100)}% - 1px)"></div>` : '';
   const bud = budget && !isSub
     ? `<div class="bud">${over ? `<span class="over-t">超支 ${money(amt - budget)}</span>` : `預算 ${money(budget)}，剩 ${money(budget - amt)}`}</div>` : '';
-  return `<button class="cb" data-${isSub ? 'sub' : 'root'}="${esc(id)}"><div class="l"><span>${esc(catName(id))}${isSub ? '<span class="go">明細 ›</span>' : ''}</span>
+  return `<button class="cb" data-${isSub ? 'sub' : 'root'}="${esc(id)}"><div class="l"><span>${isSub ? '' : catLook(id)[0] + ' '}${esc(catName(id))}${isSub ? '<span class="go">明細 ›</span>' : ''}</span>
     <span>${money(amt)}<small>${total ? Math.round(amt / total * 100) : 0}%</small></span></div>
     <div class="tr"><div class="f${over ? ' over' : ''}" style="width:${w}%"></div>${mk}</div>${bud}</button>`;
 }
@@ -1235,8 +1253,12 @@ function bind() {
     const b = e.target.closest('button'); if (!b) return;
     keyPress(b.dataset.k || b.textContent);
   });
-  $('#typeToggle').addEventListener('click', () => { setType(S.type === 'expense' ? 'income' : 'expense'); renderAdd(); });
+  $('#typeToggle').addEventListener('click', (e) => {
+    const t = e.target.closest('[data-t]')?.dataset.t || (S.type === 'expense' ? 'income' : 'expense');
+    if (t !== S.type) { setType(t); renderAdd(); }
+  });
   $('#date').addEventListener('change', (e) => { if (e.target.value) { S.date = e.target.value; renderAdd(); } });
+  $('#picked').addEventListener('click', () => { $('#allCats').classList.add('on'); $('#toggleAll').textContent = '收合'; $('#allCats').scrollIntoView({ block: 'nearest' }); });
   $('#toggleAll').addEventListener('click', () => {
     const on = $('#allCats').classList.toggle('on');
     $('#toggleAll').textContent = on ? '收合' : '全部分類';

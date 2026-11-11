@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.12.0';
+const VERSION = '1.13.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -361,7 +361,7 @@ function shiftDay(d) {
   t.setDate(t.getDate() + d);
   S.date = ymd(t);
   renderAdd();
-  for (const el of [$('#dateHero'), $('#amount'), document.querySelector('#dayList .list')]) {
+  for (const el of [$('#dateHero'), document.querySelector('#dayInline .list') || document.querySelector('#dayInline .di-empty'), document.querySelector('#dayList .list')]) {
     if (!el) continue;
     el.classList.remove('inL', 'inR'); void el.offsetWidth;
     el.classList.add(d > 0 ? 'inL' : 'inR');
@@ -416,6 +416,10 @@ function renderDay() {
     ? `<span>${md} 已記 <b>${real.length}</b> 筆・支出 <b>${money(exp)}</b>${inc ? `・收入 <b>${money(inc)}</b>` : ''}${sch ? `・預定 ${sch}` : ''}</span>`
     : `<span>${md} 還沒有紀錄</span>`;
   $('#daySum').disabled = false;
+  $('#dayInline').innerHTML = items.length
+    ? `<div class="list">${items.map((t) => rowHTML(t).replace('class="row"', `class="row${t.id === S.editing ? ' editing' : ''}"`)).join('')}</div>`
+    : '<div class="di-empty">這天還沒有紀錄</div>';
+  requestAnimationFrame(() => { const d = $('#dayInline'); d.style.visibility = d.clientHeight < 34 ? 'hidden' : ''; });
   const dw = WEEK[new Date(S.date + 'T00:00:00').getDay()];
   $('#dayList').innerHTML = `<div class="day-h dl-h"><button class="day-nav sm" data-dn="-1" aria-label="前一天">‹</button>
       <span class="dl-t">${S.date.slice(0, 4) !== today().slice(0, 4) ? S.date.slice(0, 4) + ' ' : ''}${Number(m)}/${Number(d)}（${dw}）${S.date === today() ? '今天' : ''}</span>
@@ -1388,6 +1392,11 @@ function bind() {
   $('#btnConfirm').addEventListener('click', confirmScheduled);
   setupDaySwipe();
   $('#daySum').addEventListener('click', () => openDrawer('dayDrawer'));
+  $('#dayInline').addEventListener('click', (e) => {
+    const r = e.target.closest('.row'); if (!r || r.dataset.id === S.editing) return;
+    if (!S.editing) { S.returnTo = 'add'; S.returnDate = S.date; }
+    startEdit(r.dataset.id);
+  });
   $('#dayList').addEventListener('click', (e) => {
     const r = e.target.closest('.row'); if (!r || r.dataset.id === S.editing) return;
     if (!S.editing) { S.returnTo = 'add'; S.returnDate = S.date; }
@@ -1482,6 +1491,7 @@ document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.prev
   renderAdd();
   setupSW();
   window.addEventListener('online', () => syncNow(false));
+  window.addEventListener('resize', () => { if ($('#v-add').classList.contains('on')) renderDay(); });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { autoSync(); checkUpdate(false); } });
   setTimeout(autoSync, 1500);
 })();

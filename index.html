@@ -28,14 +28,14 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
 html{touch-action:manipulation;-webkit-text-size-adjust:100%}
-html,body{margin:0;height:100%}
+html,body{margin:0;height:100%;overflow-x:hidden;max-width:100%}
 body{background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif;
   -webkit-user-select:none;user-select:none;overscroll-behavior:none}
 input,button{font:inherit;color:inherit}
 button{border:0;background:none;cursor:pointer;padding:0}
-.app{display:flex;flex-direction:column;height:100%;padding-top:env(safe-area-inset-top)}
-main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.view{display:none;padding:12px 16px 24px;max-width:560px;margin:0 auto}
+.app{display:flex;flex-direction:column;height:100%;width:100%;max-width:100vw;overflow:hidden;padding-top:env(safe-area-inset-top)}
+main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:none}
+.view{display:none;padding:12px 16px 24px;max-width:560px;margin:0 auto;min-width:0;overflow-x:hidden}
 .view.on{display:block}
 nav.tabs{display:flex;border-top:1px solid var(--line);background:var(--card);padding-bottom:env(safe-area-inset-bottom)}
 nav.tabs button{flex:1;padding:10px 0 8px;font-size:13px;color:var(--sub);display:flex;flex-direction:column;align-items:center;gap:2px}
@@ -48,11 +48,11 @@ nav.tabs svg{width:22px;height:22px}
 .edit-bar .grow{flex:1}
 .edit-bar button{padding:4px 10px;border-radius:8px;background:var(--card)}
 .edit-bar .del{color:var(--danger)}
-.top-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.type-toggle{font-size:14px;color:var(--sub);padding:4px 0}
+.top-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;min-width:0}
+.type-toggle{flex:1;min-width:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;color:var(--sub);padding:4px 0}
 .type-toggle b{color:var(--text)}
-.date-pill{position:relative;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
-.date-pill input{position:absolute;inset:0;opacity:0;width:100%}
+.date-pill{position:relative;overflow:hidden;white-space:nowrap;flex:none;max-width:42vw;text-overflow:ellipsis;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+.date-pill input{position:absolute;inset:0;opacity:0;width:100%;height:100%;min-width:0;max-width:100%;margin:0;padding:0;border:0;-webkit-appearance:none;appearance:none;font-size:16px}
 .amount{font-size:44px;font-weight:600;text-align:right;letter-spacing:-.5px;min-height:62px;font-variant-numeric:tabular-nums;overflow-x:auto;white-space:nowrap}
 .amount.income{color:var(--income)}
 .amount .ph{color:var(--line)}
@@ -79,8 +79,8 @@ nav.tabs svg{width:22px;height:22px}
 /* 明細 */
 .month-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .month-bar button.nav{font-size:22px;padding:4px 14px;color:var(--accent)}
-.month-title{position:relative;font-size:18px;font-weight:600}
-.month-title input{position:absolute;inset:0;opacity:0;width:100%}
+.month-title{position:relative;overflow:hidden;font-size:18px;font-weight:600}
+.month-title input{position:absolute;inset:0;opacity:0;width:100%;height:100%;min-width:0;max-width:100%;margin:0;padding:0;border:0;-webkit-appearance:none;appearance:none;font-size:16px}
 .sum-card{display:flex;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 4px;margin-bottom:10px}
 .sum-card div{flex:1;text-align:center}
 .sum-card small{display:block;font-size:12px;color:var(--sub)}
@@ -172,7 +172,7 @@ nav.tabs svg{width:22px;height:22px}
 .imp-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 6px;max-width:560px;width:100%;margin:0 auto}
 .imp-head h2{margin:0;font-size:18px}
 .imp-head button{color:var(--accent);font-size:15px}
-.imp-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 16px 16px;max-width:560px;width:100%;margin:0 auto}
+.imp-body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:0 16px 16px;max-width:560px;width:100%;margin:0 auto}
 .imp-sum{font-size:14px;line-height:1.7;margin:4px 0 10px}
 .imp-sum b{font-variant-numeric:tabular-nums}
 .imp-sum button{color:var(--accent);font-size:14px}
@@ -192,8 +192,8 @@ nav.tabs svg{width:22px;height:22px}
 .imp-foot button{display:block;width:100%;max-width:528px;margin:0 auto;background:var(--accent);color:var(--on-accent);border-radius:12px;padding:13px;font-size:16px;font-weight:600}
 .imp-foot button:disabled{opacity:.4}
 
-.pills{display:flex;gap:6px}
-.date-pill select{position:absolute;inset:0;opacity:0;width:100%;font-size:16px}
+.pills{display:flex;gap:6px;flex:none}
+.date-pill select{position:absolute;inset:0;opacity:0;width:100%;height:100%;min-width:0;max-width:100%;margin:0;padding:0;border:0;-webkit-appearance:none;appearance:none;font-size:16px}
 .date-pill.rep{color:var(--sub)}
 .date-pill.rep.on{color:var(--accent);border-color:var(--accent)}
 .sr .chip{flex:none}

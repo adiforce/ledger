@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.11.1';
+const VERSION = '1.12.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -206,8 +206,14 @@ function renderTypeToggle() {
 }
 function renderDate() {
   $('#date').value = S.date;
-  $('#dateLabel').textContent = S.date === today() ? `今天 ${S.date.slice(5).replace('-', '/')}` : `${dayLabel(S.date)}${S.date.slice(0, 4) !== today().slice(0, 4) ? ' ' + S.date.slice(0, 4) : ''}`;
+  const d = new Date(S.date + 'T00:00:00'), T = today();
+  const diff = Math.round((new Date(T + 'T00:00:00') - d) / 86400000);
+  $('#dateLabel').textContent = `${S.date.slice(0, 4) !== T.slice(0, 4) ? d.getFullYear() + '年' : ''}${d.getMonth() + 1}月${d.getDate()}日 週${WEEK[d.getDay()]}`;
+  $('#dateBadge').textContent = diff === 0 ? '今天' : diff === 1 ? '昨天' : diff === -1 ? '明天・預定' : diff > 0 ? `${diff} 天前` : `${-diff} 天後・預定`;
+  $('#dateHero').className = 'date-hero ' + (diff === 0 ? 'today' : diff > 0 ? 'past' : 'future');
+  $('#dayToday').disabled = diff === 0;
 }
+const mdOf = (s) => `${Number(s.slice(5, 7))}/${Number(s.slice(8))}`;
 function chip(id, on, withParent = true) {
   const c = S.catById.get(id);
   if (!c) return '';
@@ -218,7 +224,12 @@ function chip(id, on, withParent = true) {
 function renderCats() {
   const freq = S.freq[S.type].slice();
   if (S.subId && !freq.includes(S.subId) && S.catById.get(S.subId)?.type === S.type) freq.unshift(S.subId);  // 選中的不在常用裡 → 排到第一個
-  $('#freqCats').innerHTML = freq.map((id) => chip(id, id === S.subId, false)).join('');
+  const shown = freq.slice(0, 7);
+  if (S.subId && !shown.includes(S.subId) && S.catById.get(S.subId)?.type === S.type) shown[6] = S.subId;
+  $('#freqCats').innerHTML = shown.map((id) => {
+    const c = S.catById.get(id); if (!c) return '';
+    return `<button class="tile${id === S.subId ? ' on' : ''}" data-sub="${esc(id)}"><span class="e">${catLook(c.parentId || c.id)[0]}</span><span class="n">${esc(c.name)}</span></button>`;
+  }).join('') + '<button class="tile more" id="moreCats"><span class="e">⋯</span><span class="n">更多</span></button>';
   $('#allCats').innerHTML = roots(S.type).map((r) =>
     `<div class="root">${catLook(r.id)[0]} ${esc(r.name)}</div><div class="cat-grid">${subsOf(r.id).map((s) => chip(s.id, s.id === S.subId, false)).join('')}</div>`).join('');
 }
@@ -238,10 +249,28 @@ function renderAdd() {
   $('#editBar').classList.toggle('on', !!ed);
   $('#btnConfirm').hidden = !(ed && ed.scheduled);
   $('#editBar .grow').textContent = ed?.scheduled ? '編輯預定項目' : '編輯中';
-  $('[data-k="ok"]').textContent = ed ? '儲存' : (S.date > today() ? '排入預定' : '記帳');
+  $('[data-k="ok"]').innerHTML = ed ? '儲存' : (S.date > today() ? `排入<br>${mdOf(S.date)}` : `記到<br>${mdOf(S.date)}`);
   renderRepeat(ed);
   renderDay();
-  fitNote();
+  renderNotePrev();
+}
+function renderNotePrev() {
+  const v = $('#note').value.trim();
+  $('#notePrev').textContent = v;
+  $('#btnNote').textContent = v ? '✎ 改備註' : '✎ 備註';
+  $('#btnNote').classList.toggle('on', !!v);
+}
+/* ── 抽屜 ── */
+function openDrawer(id) {
+  closeDrawers();
+  $('#' + id).classList.add('on'); $('#drawerBg').classList.add('on');
+  if (id === 'noteDrawer') setTimeout(() => { const n = $('#note'); n.focus(); fitNote(); n.setSelectionRange(n.value.length, n.value.length); }, 60);
+}
+function closeDrawers() {
+  const wasNote = $('#noteDrawer').classList.contains('on');
+  document.querySelectorAll('.drawer.on').forEach((d) => d.classList.remove('on'));
+  $('#drawerBg').classList.remove('on');
+  if (wasNote) { $('#note').blur(); renderNotePrev(); }
 }
 const REPEAT_LABEL = { '': '不重複', monthly: '每月', yearly: '每年' };
 function renderRepeat(ed) {
@@ -252,6 +281,7 @@ function renderRepeat(ed) {
   pill.classList.toggle('on', !!S.repeat);
 }
 function resetForm(keepDate) {
+  closeDrawers();
   S.expr = ''; S.editing = null; S.repeat = '';
   if (!keepDate) S.date = today();
   S.subId = S.freq[S.type][0] ?? null;
@@ -331,8 +361,7 @@ function shiftDay(d) {
   t.setDate(t.getDate() + d);
   S.date = ymd(t);
   renderAdd();
-  const sh = document.querySelector('.sheet');
-  for (const el of [sh, document.querySelector('#dayList .list')]) {
+  for (const el of [$('#dateHero'), $('#amount'), document.querySelector('#dayList .list')]) {
     if (!el) continue;
     el.classList.remove('inL', 'inR'); void el.offsetWidth;
     el.classList.add(d > 0 ? 'inL' : 'inR');
@@ -365,10 +394,11 @@ function bindDaySwipe(zone, animEl) {
   zone.addEventListener('touchcancel', finish);
 }
 function setupDaySwipe() {
-  bindDaySwipe($('#dayZone'), () => document.querySelector('.sheet'));
+  bindDaySwipe($('#dayZone'), () => $('#dateHero'));
   bindDaySwipe($('#dayList'), () => document.querySelector('#dayList .list'));
   $('#dayPrev').addEventListener('click', () => shiftDay(-1));
   $('#dayNext').addEventListener('click', () => shiftDay(1));
+  $('#dayToday').addEventListener('click', () => { const t = new Date(S.date + 'T00:00:00'); const diff = Math.round((new Date(today() + 'T00:00:00') - t) / 86400000); if (diff) shiftDay(diff); });
   $('#dayList').addEventListener('click', (e) => { const b = e.target.closest('[data-dn]'); if (b) shiftDay(Number(b.dataset.dn)); });
 }
 
@@ -385,7 +415,7 @@ function renderDay() {
   $('#daySum').innerHTML = items.length
     ? `<span>${md} 已記 <b>${real.length}</b> 筆・支出 <b>${money(exp)}</b>${inc ? `・收入 <b>${money(inc)}</b>` : ''}${sch ? `・預定 ${sch}` : ''}</span>`
     : `<span>${md} 還沒有紀錄</span>`;
-  $('#daySum').disabled = !items.length;
+  $('#daySum').disabled = false;
   const dw = WEEK[new Date(S.date + 'T00:00:00').getDay()];
   $('#dayList').innerHTML = `<div class="day-h dl-h"><button class="day-nav sm" data-dn="-1" aria-label="前一天">‹</button>
       <span class="dl-t">${S.date.slice(0, 4) !== today().slice(0, 4) ? S.date.slice(0, 4) + ' ' : ''}${Number(m)}/${Number(d)}（${dw}）${S.date === today() ? '今天' : ''}</span>
@@ -1301,6 +1331,7 @@ async function onSyncCfgChange() {
 
 /* ── 分頁切換 ── */
 function switchView(id) {
+  closeDrawers();
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('on', v.id === id));
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.v === id));
   $('main').scrollTop = 0;
@@ -1327,25 +1358,26 @@ function bind() {
     if (t !== S.type) { setType(t); renderAdd(); }
   });
   $('#date').addEventListener('change', (e) => { if (e.target.value) { S.date = e.target.value; renderAdd(); } });
-  $('#toggleAll').addEventListener('click', () => {
-    const on = $('#allCats').classList.toggle('on');
-    $('#toggleAll').textContent = on ? '收合' : '全部分類';
-  });
   const pickCat = (e) => {
+    if (e.target.closest('#moreCats')) { openDrawer('catDrawer'); return; }
     const b = e.target.closest('[data-sub]'); if (!b) return;
     S.subId = b.dataset.sub;
-    if ($('#allCats').classList.contains('on')) { $('#allCats').classList.remove('on'); $('#toggleAll').textContent = '全部分類'; }
-    renderPicked(); renderCats();
+    closeDrawers();
+    renderCats();
   };
   $('#freqCats').addEventListener('click', pickCat);
   $('#allCats').addEventListener('click', pickCat);
-  $('#note').addEventListener('input', () => { fitNote(); renderSugs(); });
+  $('#btnNote').addEventListener('click', () => openDrawer('noteDrawer'));
+  $('#notePrev').addEventListener('click', () => openDrawer('noteDrawer'));
+  $('#drawerBg').addEventListener('click', closeDrawers);
+  document.querySelectorAll('.drawer [data-close]').forEach((b) => b.addEventListener('click', closeDrawers));
+  $('#note').addEventListener('input', () => { fitNote(); renderSugs(); renderNotePrev(); });
   $('#sugs').addEventListener('click', (e) => {
     const b = e.target.closest('[data-note]'); if (!b) return;
     const n = b.dataset.note, info = S.noteIdx.get(n);
     setNote(n);
     if (info && S.catById.has(info.subcategoryId)) { S.type = info.type; S.subId = info.subcategoryId; }
-    $('#note').blur();
+    closeDrawers();
     renderAdd();
   });
   $('#btnCancel').addEventListener('click', () => { resetForm(); leaveEdit(); });
@@ -1355,18 +1387,11 @@ function bind() {
   });
   $('#btnConfirm').addEventListener('click', confirmScheduled);
   setupDaySwipe();
-  $('#daySum').addEventListener('click', () => {
-    const main = $('main'), target = $('#dayList');
-    if (!target.firstElementChild) return;
-    const top = main.scrollTop + target.getBoundingClientRect().top - main.getBoundingClientRect().top - 8;
-    try { main.scrollTo({ top, behavior: 'smooth' }); } catch { main.scrollTop = top; }
-    setTimeout(() => { if (Math.abs(main.scrollTop - top) > 40) main.scrollTop = top; }, 600);  // iOS 平滑捲動失敗時直接跳過去
-    const h = target.querySelector('.day-h');
-    h.classList.remove('flash'); void h.offsetWidth; h.classList.add('flash');
-  });
+  $('#daySum').addEventListener('click', () => openDrawer('dayDrawer'));
   $('#dayList').addEventListener('click', (e) => {
     const r = e.target.closest('.row'); if (!r || r.dataset.id === S.editing) return;
     if (!S.editing) { S.returnTo = 'add'; S.returnDate = S.date; }
+    closeDrawers();
     startEdit(r.dataset.id);
   });
 

@@ -267,6 +267,77 @@ nav.tabs button.dot::after{left:calc(50% + 14px);background:var(--ribbon)}
 .sheet.inR,.list.inR{animation:inR .22s ease-out}
 @media (prefers-reduced-motion: reduce){.inL,.inR{animation:none!important}}
 
+/* ── v1.12 記一筆：上看下按 ── */
+#v-add.on{display:flex;flex-direction:column;min-height:100%;padding-top:8px;padding-bottom:10px}
+.add-top{flex:1;display:flex;flex-direction:column;min-height:0;touch-action:pan-y}
+.date-hero{position:relative;display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:18px;background:var(--card);border:1px solid var(--line);overflow:hidden}
+.date-hero input{position:absolute;inset:0;opacity:0;width:100%;height:100%;min-width:0;margin:0;border:0;-webkit-appearance:none;appearance:none;font-size:16px}
+.dh-date{font-size:24px;font-weight:700;letter-spacing:.5px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dh-badge{flex:none;font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.date-hero.past,.date-hero.future{background:var(--ribbon-soft);border-color:var(--ribbon)}
+.date-hero.past .dh-date,.date-hero.future .dh-date{color:var(--ribbon)}
+.date-hero.past .dh-badge,.date-hero.future .dh-badge{background:var(--ribbon);color:#fff}
+.add-top .day-sum{flex:none;padding:8px 4px 0;justify-content:space-between}
+.add-top .day-sum::after{content:"▸";color:var(--sub);margin-left:8px}
+.add-top .day-sum:disabled::after{content:""}
+.add-top .amount{margin-top:auto;font-size:52px;font-weight:700;letter-spacing:-1px;line-height:1.1;min-height:0;padding:6px 4px 0}
+.note-prev{font-size:14px;color:var(--sub);text-align:right;padding:2px 4px 0;white-space:pre-line;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:20px}
+.add-bottom{display:flex;flex-direction:column;gap:8px;padding-top:8px}
+.ctl-row{display:flex;align-items:center;gap:6px}
+.ctl-row .type-toggle{margin-right:auto}
+.pill{position:relative;overflow:hidden;flex:none;white-space:nowrap;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px;color:var(--sub)}
+.pill select{position:absolute;inset:0;opacity:0;width:100%;height:100%;min-width:0;margin:0;border:0;-webkit-appearance:none;appearance:none;font-size:16px}
+.pill.on{color:var(--accent);border-color:var(--accent)}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:clamp(50px,7.2vh,64px);border-radius:14px;background:var(--card);border:1px solid var(--line);font-size:13px;min-width:0;padding:0 2px}
+.tile .e{font-size:20px;line-height:1}
+.tile .n{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent);box-shadow:0 2px 8px rgba(15,110,102,.25)}
+.tile.more{color:var(--accent);font-weight:600}
+.day-nav-row{display:grid;grid-template-columns:1fr auto 1fr;gap:6px}
+.dn{height:36px;border-radius:12px;background:var(--key-op);color:var(--accent);font-size:14px;font-weight:600}
+.dn.mid{padding:0 14px}
+.dn:disabled{opacity:.4}
+.add-bottom .keypad{margin-top:0;gap:7px}
+.add-bottom .keypad button{height:clamp(44px,6.4vh,58px)}
+.add-bottom .keypad .ok{font-size:16px;line-height:1.15}
+.drawer-bg{position:fixed;inset:0;background:rgba(10,20,18,.38);z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+.drawer-bg.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--bg);border-radius:22px 22px 0 0;max-height:78vh;display:flex;flex-direction:column;
+  transform:translateY(105%);transition:transform .25s ease;padding-bottom:env(safe-area-inset-bottom);visibility:hidden}
+.drawer.on{transform:none;visibility:visible}
+.drawer.top{top:0;bottom:auto;border-radius:0 0 22px 22px;transform:translateY(-105%);padding-top:env(safe-area-inset-top);padding-bottom:0}
+.drawer.top.on{transform:none}
+.drawer-h{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 8px;max-width:560px;width:100%;margin:0 auto}
+.drawer-h b{font-size:17px}
+.drawer-h button{color:var(--accent);font-weight:600;font-size:15px;padding:4px 2px}
+.drawer-b{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:0 16px 16px;max-width:560px;width:100%;margin:0 auto}
+#noteDrawer .note{margin-top:0;max-height:40vh;font-size:17px}
+#noteDrawer .note:focus{outline:none;border-color:var(--accent)}
+#noteDrawer .sugs{flex-wrap:wrap;overflow:visible}
+#allCats .cat-grid{display:flex;flex-wrap:wrap;gap:6px}
+#allCats .root{font-size:13px;margin:12px 2px 6px}
+#dayList{margin-top:0}
+@media (prefers-reduced-motion: reduce){.drawer,.drawer-bg{transition:none}}
+.note-prev:empty{min-height:0;padding:0}
+@media (max-height: 720px){
+  #v-add.on{padding-top:4px;padding-bottom:6px}
+  .date-hero{padding:8px 14px;border-radius:16px}
+  .dh-date{font-size:20px}
+  .add-top .day-sum{padding-top:5px}
+  .add-top .amount{font-size:40px;padding-top:0}
+  .add-bottom{gap:6px;padding-top:4px}
+  .pill{padding:4px 11px}
+  .type-toggle span{padding:4px 12px}
+  .tiles{gap:5px}
+  .tile{height:46px;gap:1px;font-size:12px}
+  .tile .e{font-size:16px}
+  .dn{height:30px}
+  .add-bottom .keypad{gap:6px}
+  .add-bottom .keypad button{height:40px;font-size:20px}
+  .add-bottom .keypad .ok{font-size:14px}
+}
+
 .toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);background:var(--text);color:var(--bg);
   padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -288,30 +359,31 @@ nav.tabs button.dot::after{left:calc(50% + 14px);background:var(--ribbon)}
         <button class="del" id="btnDelete">刪除</button>
         <button id="btnCancel">取消</button>
       </div>
-      <div id="dayZone">
-      <div class="top-row">
-        <button class="type-toggle" id="typeToggle"></button>
-        <div class="pills"><label class="date-pill rep" id="repeatPill"><span id="repeatLabel">不重複</span><select id="repeat"><option value="">不重複</option><option value="monthly">每月</option><option value="yearly">每年</option></select></label>
-        <label class="date-pill"><span id="dateLabel"></span><input type="date" id="date"></label></div>
+      <div class="add-top" id="dayZone">
+        <label class="date-hero" id="dateHero">
+          <span class="dh-date" id="dateLabel"></span><span class="dh-badge" id="dateBadge"></span>
+          <input type="date" id="date" aria-label="選擇日期">
+        </label>
+        <button class="day-sum" id="daySum"></button>
+        <div class="amount" id="amount"></div>
+        <div class="note-prev" id="notePrev"></div>
+        <div class="budget-line" id="budgetLine"></div>
       </div>
-      <div class="day-row"><button class="day-nav" id="dayPrev" aria-label="前一天">‹</button><button class="day-sum" id="daySum"></button><button class="day-nav" id="dayNext" aria-label="下一天">›</button></div>
-      <div class="sheet">
-        <div class="sheet-top"><div class="amount" id="amount"></div></div>
-        <textarea class="note" id="note" rows="1" placeholder="備註（例：午餐 美麗華）可換行" autocomplete="off"></textarea>
+      <div class="add-bottom">
+        <div class="ctl-row">
+          <button class="type-toggle" id="typeToggle"></button>
+          <label class="pill rep" id="repeatPill"><span id="repeatLabel">不重複</span><select id="repeat"><option value="">不重複</option><option value="monthly">每月</option><option value="yearly">每年</option></select></label>
+          <button class="pill" id="btnNote">✎ 備註</button>
+        </div>
+        <div class="tiles" id="freqCats"></div>
+        <div class="day-nav-row"><button class="dn" id="dayPrev">‹ 前一天</button><button class="dn mid" id="dayToday">回今天</button><button class="dn" id="dayNext">後一天 ›</button></div>
+        <div class="keypad" id="keypad">
+          <button>7</button><button>8</button><button>9</button><button class="op" data-k="back">⌫</button>
+          <button>4</button><button>5</button><button>6</button><button class="op" data-k="+">＋</button>
+          <button>1</button><button>2</button><button>3</button><button class="op" data-k="clear">C</button>
+          <button>00</button><button>0</button><button>.</button><button class="ok" data-k="ok">記帳</button>
+        </div>
       </div>
-      </div>
-      <div class="budget-line" id="budgetLine"></div>
-      <div class="sugs" id="sugs"></div>
-      <div class="section-h"><span>常用分類</span><button id="toggleAll">全部分類</button></div>
-      <div class="cat-grid" id="freqCats"></div>
-      <div class="all-cats" id="allCats"></div>
-      <div class="keypad" id="keypad">
-        <button>7</button><button>8</button><button>9</button><button class="op" data-k="back">⌫</button>
-        <button>4</button><button>5</button><button>6</button><button class="op" data-k="+">＋</button>
-        <button>1</button><button>2</button><button>3</button><button class="op" data-k="clear">C</button>
-        <button>00</button><button>0</button><button>.</button><button class="ok" data-k="ok">記帳</button>
-      </div>
-      <div id="dayList"></div>
     </section>
 
     <!-- 明細 -->
@@ -412,6 +484,11 @@ nav.tabs button.dot::after{left:calc(50% + 14px);background:var(--ribbon)}
     <div id="schedList"></div>
   </div>
 </div>
+<div class="drawer-bg" id="drawerBg"></div>
+<div class="drawer" id="catDrawer" role="dialog" aria-label="全部分類"><div class="drawer-h"><b>全部分類</b><button data-close>完成</button></div><div class="drawer-b" id="allCats"></div></div>
+<div class="drawer" id="dayDrawer" role="dialog" aria-label="當天紀錄"><div class="drawer-h"><b>當天紀錄</b><button data-close>關閉</button></div><div class="drawer-b" id="dayList"></div></div>
+<div class="drawer top" id="noteDrawer" role="dialog" aria-label="備註"><div class="drawer-h"><b>備註</b><button data-close>完成</button></div>
+  <div class="drawer-b"><textarea class="note" id="note" rows="3" placeholder="例：午餐 美麗華（可換行）" autocomplete="off"></textarea><div class="sugs" id="sugs"></div></div></div>
 <div class="toast" id="toast"></div>
 <div class="mask" id="mask">處理中…</div>
 <script src="app.js"></script>

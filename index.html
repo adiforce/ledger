@@ -201,6 +201,13 @@ nav.tabs svg{width:22px;height:22px}
 nav.tabs button.dot{position:relative}
 nav.tabs button.dot::after{content:"";position:absolute;top:7px;left:calc(50% + 9px);width:8px;height:8px;border-radius:50%;background:var(--danger)}
 
+.day-sum{display:flex;align-items:center;gap:4px;width:100%;text-align:left;font-size:13px;color:var(--sub);padding:2px 0 0}
+.day-sum b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.day-sum .go{margin-left:auto}
+#dayList{margin-top:18px}
+#dayList:empty{display:none}
+.row.editing{background:var(--accent-soft)}
+
 .toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);background:var(--text);color:var(--bg);
   padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -227,6 +234,7 @@ nav.tabs button.dot::after{content:"";position:absolute;top:7px;left:calc(50% + 
         <div class="pills"><label class="date-pill rep" id="repeatPill"><span id="repeatLabel">不重複</span><select id="repeat"><option value="">不重複</option><option value="monthly">每月</option><option value="yearly">每年</option></select></label>
         <label class="date-pill"><span id="dateLabel"></span><input type="date" id="date"></label></div>
       </div>
+      <button class="day-sum" id="daySum"></button>
       <div class="amount" id="amount"></div>
       <div class="picked" id="picked"></div>
       <div class="budget-line" id="budgetLine"></div>
@@ -241,6 +249,7 @@ nav.tabs button.dot::after{content:"";position:absolute;top:7px;left:calc(50% + 
         <button>1</button><button>2</button><button>3</button><button class="op" data-k="clear">C</button>
         <button>00</button><button>0</button><button>.</button><button class="ok" data-k="ok">記帳</button>
       </div>
+      <div id="dayList"></div>
     </section>
 
     <!-- 明細 -->

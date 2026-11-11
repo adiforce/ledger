@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -213,6 +213,7 @@ function renderAdd() {
   $('#editBar .grow').textContent = ed?.scheduled ? '編輯預定項目' : '編輯中';
   $('[data-k="ok"]').textContent = ed ? '儲存' : (S.date > today() ? '排入預定' : '記帳');
   renderRepeat(ed);
+  renderDay();
 }
 const REPEAT_LABEL = { '': '不重複', monthly: '每月', yearly: '每年' };
 function renderRepeat(ed) {
@@ -291,7 +292,30 @@ async function save() {
 }
 function leaveEdit() {
   const back = S.returnTo; S.returnTo = null;
-  if (back === 'sched') { switchView('v-list'); openSched(); } else switchView('v-list');
+  if (back === 'sched') { switchView('v-list'); openSched(); }
+  else if (back === 'add') { S.date = S.returnDate || today(); S.returnDate = null; switchView('v-add'); }
+  else switchView('v-list');
+}
+
+/* ── 記一筆：當天紀錄 ── */
+function renderDay() {
+  const items = live().filter((t) => t.date === S.date)
+    .sort((a, b) => ((b.createdAt || '') > (a.createdAt || '') ? 1 : (b.createdAt || '') < (a.createdAt || '') ? -1 : 0));
+  const [, m, d] = S.date.split('-');
+  const md = S.date === today() ? '今天' : `${Number(m)}/${Number(d)}`;
+  const real = items.filter((t) => !t.scheduled);
+  const exp = real.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const inc = real.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const sch = items.length - real.length;
+  $('#daySum').innerHTML = items.length
+    ? `<span>${md} 已記 <b>${real.length}</b> 筆・支出 <b>${money(exp)}</b>${inc ? `・收入 <b>${money(inc)}</b>` : ''}${sch ? `・預定 ${sch}` : ''}</span><span class="go">看明細 ↓</span>`
+    : `<span>${md} 還沒有紀錄</span>`;
+  $('#daySum').disabled = !items.length;
+  const dw = WEEK[new Date(S.date + 'T00:00:00').getDay()];
+  $('#dayList').innerHTML = items.length
+    ? `<div class="day-h"><span>${Number(m)}/${Number(d)}（${dw}）的紀錄</span><span>${exp ? '支出 ' + money(exp) : ''}</span></div>
+       <div class="list">${items.map((t) => rowHTML(t).replace('class="row"', `class="row${t.id === S.editing ? ' editing' : ''}"`)).join('')}</div>`
+    : '';
 }
 
 function startEdit(id) {
@@ -1234,6 +1258,12 @@ function bind() {
     await softDelete(S.editing); resetForm(); leaveEdit();
   });
   $('#btnConfirm').addEventListener('click', confirmScheduled);
+  $('#daySum').addEventListener('click', () => $('#dayList').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  $('#dayList').addEventListener('click', (e) => {
+    const r = e.target.closest('.row'); if (!r || r.dataset.id === S.editing) return;
+    if (!S.editing) { S.returnTo = 'add'; S.returnDate = S.date; }
+    startEdit(r.dataset.id);
+  });
 
   $('#prevM').addEventListener('click', () => shiftMonth(-1));
   $('#nextM').addEventListener('click', () => shiftMonth(1));

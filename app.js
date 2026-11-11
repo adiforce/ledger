@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.11.0';
+const VERSION = '1.11.1';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -383,7 +383,7 @@ function renderDay() {
   const inc = real.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const sch = items.length - real.length;
   $('#daySum').innerHTML = items.length
-    ? `<span>${md} 已記 <b>${real.length}</b> 筆・支出 <b>${money(exp)}</b>${inc ? `・收入 <b>${money(inc)}</b>` : ''}${sch ? `・預定 ${sch}` : ''}</span><span class="go">看明細 ↓</span>`
+    ? `<span>${md} 已記 <b>${real.length}</b> 筆・支出 <b>${money(exp)}</b>${inc ? `・收入 <b>${money(inc)}</b>` : ''}${sch ? `・預定 ${sch}` : ''}</span>`
     : `<span>${md} 還沒有紀錄</span>`;
   $('#daySum').disabled = !items.length;
   const dw = WEEK[new Date(S.date + 'T00:00:00').getDay()];

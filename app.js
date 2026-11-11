@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.10.0';
+const VERSION = '1.11.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -195,6 +195,7 @@ function renderAmount() {
   el.textContent = S.expr.includes('+') ? `${S.expr.replace(/\+/g, ' + ')} = ${money(v)}` : S.expr;
 }
 function renderPicked() {
+  if (!$('#picked')) return;
   const c = S.catById.get(S.subId);
   $('#picked').innerHTML = c
     ? `${catIcon(c.parentId)}<span class="pt">${c.parentId && catName(c.parentId) !== c.name ? `<small>${esc(catName(c.parentId))}</small>` : ''}<b>${esc(c.name)}</b></span>`
@@ -215,7 +216,9 @@ function chip(id, on, withParent = true) {
   return `<button class="chip${on ? ' on' : ''}" data-sub="${esc(id)}"><span class="e">${catLook(c.parentId || c.id)[0]}</span>${esc(c.name)}${showParent ? `<small>${esc(parent)}</small>` : ''}</button>`;
 }
 function renderCats() {
-  $('#freqCats').innerHTML = S.freq[S.type].map((id) => chip(id, id === S.subId, false)).join('');
+  const freq = S.freq[S.type].slice();
+  if (S.subId && !freq.includes(S.subId) && S.catById.get(S.subId)?.type === S.type) freq.unshift(S.subId);  // 選中的不在常用裡 → 排到第一個
+  $('#freqCats').innerHTML = freq.map((id) => chip(id, id === S.subId, false)).join('');
   $('#allCats').innerHTML = roots(S.type).map((r) =>
     `<div class="root">${catLook(r.id)[0]} ${esc(r.name)}</div><div class="cat-grid">${subsOf(r.id).map((s) => chip(s.id, s.id === S.subId, false)).join('')}</div>`).join('');
 }
@@ -979,7 +982,22 @@ async function onBudgetInput(e) {
 }
 
 /* ── 統計 ── */
-const ST = { mode: 'month', period: today().slice(0, 7), open: null };
+const ST = { mode: 'month', period: today().slice(0, 7), anchor: today().slice(0, 7), open: null };
+// 趨勢圖的範圍：月模式 = anchor 往前 12 個月；年模式 = anchor 往前最多 16 年
+function trendStart() {
+  if (ST.mode === 'month') return shiftPeriod(ST.anchor, -11);
+  const first = live().reduce((a, t) => (t.date < a ? t.date : a), today()).slice(0, 4);
+  return String(Math.max(Number(first), Number(ST.anchor) - 15));
+}
+// 選的期間跑出圖表範圍時才平移
+function keepInWindow() {
+  if (ST.period > ST.anchor) ST.anchor = ST.period;
+  else if (ST.period < trendStart()) {
+    ST.anchor = ST.mode === 'month' ? shiftPeriod(ST.period, 11) : String(Number(ST.period) + 15);
+    const cap = ST.mode === 'month' ? today().slice(0, 7) : today().slice(0, 4);
+    if (ST.anchor > cap && ST.period <= cap) ST.anchor = cap;
+  }
+}
 function periodLabel(p) {
   return p.length === 4 ? `${p} 年` : `${p.slice(0, 4)} 年 ${Number(p.slice(5))} 月`;
 }
@@ -1027,12 +1045,12 @@ function barPath(x, y, w, h, r) {
 function renderTrend() {
   let periods;
   if (ST.mode === 'month') {
-    periods = Array.from({ length: 12 }, (_, i) => shiftPeriod(ST.period, i - 11));
+    periods = Array.from({ length: 12 }, (_, i) => shiftPeriod(ST.anchor, i - 11));
     $('#trendTitle').textContent = '近 12 個月支出';
   } else {
     const first = live().reduce((a, t) => (t.date < a ? t.date : a), today()).slice(0, 4);
-    const start = Math.max(Number(first), Number(ST.period) - 15);
-    periods = []; for (let y = start; y <= Number(ST.period); y++) periods.push(String(y));
+    const start = Math.max(Number(first), Number(ST.anchor) - 15);
+    periods = []; for (let y = start; y <= Number(ST.anchor); y++) periods.push(String(y));
     $('#trendTitle').textContent = '每年支出';
   }
   const vals = periods.map((p) => aggregate(p).exp);
@@ -1064,7 +1082,7 @@ function catBarHTML(id, amt, max, total, budget, isSub) {
   const bud = budget && !isSub
     ? `<div class="bud">${over ? `<span class="over-t">超支 ${money(amt - budget)}</span>` : `預算 ${money(budget)}，剩 ${money(budget - amt)}`}</div>` : '';
   return `<button class="cb" data-${isSub ? 'sub' : 'root'}="${esc(id)}"><div class="l"><span>${isSub ? '' : catLook(id)[0] + ' '}${esc(catName(id))}${isSub ? '<span class="go">明細 ›</span>' : ''}</span>
-    <span>${money(amt)}<small>${total ? Math.round(amt / total * 100) : 0}%</small></span></div>
+    <span>${money(Math.round(amt))}<small>${total ? Math.round(amt / total * 100) : 0}%</small></span></div>
     <div class="tr"><div class="f${over ? ' over' : ''}" style="width:${w}%"></div>${mk}</div>${bud}</button>`;
 }
 function renderStats() {
@@ -1082,9 +1100,9 @@ function renderStats() {
     budHTML = `<div class="budget"><div class="track"><div class="fill${a.exp > bud ? ' over' : ''}" style="width:${Math.min(100, used)}%"></div></div>
       <div class="txt"><span>預算 ${money(bud)}</span><span>${a.exp > bud ? `<span class="over-t">超支 ${money(a.exp - bud)}</span>` : `剩 ${money(bud - a.exp)}`}</span></div></div>`;
   }
-  $('#statHero').innerHTML = `<small>支出</small><div class="big">${money(a.exp)}</div>
+  $('#statHero').innerHTML = `<small>支出</small><div class="big">${money(Math.round(a.exp))}</div>
     <div class="meta">${days ? `<span>日均 <b>${money(Math.round(a.exp / days))}</b></span>` : ''}<span>${a.n} 筆</span>
-    ${prev.exp ? `<span>${pctDiff(a.exp, prev.exp)}</span>` : ''}<span>收入 <b>${money(a.inc)}</b></span></div>${budHTML}`;
+    ${prev.exp ? `<span>${pctDiff(a.exp, prev.exp)}</span>` : ''}<span>收入 <b>${money(Math.round(a.inc))}</b></span></div>${budHTML}`;
   const list = [...a.roots.entries()].sort((x, y) => y[1] - x[1]);
   if (!list.length) { $('#statCats').innerHTML = '<div class="empty">這段期間沒有支出</div>'; }
   else {
@@ -1110,11 +1128,13 @@ function bindStats() {
     const b = e.target.closest('[data-m]'); if (!b || b.dataset.m === ST.mode) return;
     ST.mode = b.dataset.m;
     ST.period = ST.mode === 'year' ? ST.period.slice(0, 4) : (ST.period === today().slice(0, 4) ? today().slice(0, 7) : ST.period + '-12');
+    ST.anchor = ST.mode === 'year' ? today().slice(0, 4) : today().slice(0, 7);
+    keepInWindow();
     ST.open = null; renderStats();
   });
-  $('#statPrev').addEventListener('click', () => { ST.period = shiftPeriod(ST.period, -1); renderStats(); });
-  $('#statNext').addEventListener('click', () => { ST.period = shiftPeriod(ST.period, 1); renderStats(); });
-  $('#statPick').addEventListener('change', (e) => { if (e.target.value) { ST.period = e.target.value; renderStats(); } });
+  $('#statPrev').addEventListener('click', () => { ST.period = shiftPeriod(ST.period, -1); keepInWindow(); renderStats(); });
+  $('#statNext').addEventListener('click', () => { ST.period = shiftPeriod(ST.period, 1); keepInWindow(); renderStats(); });
+  $('#statPick').addEventListener('change', (e) => { if (e.target.value) { ST.period = e.target.value; keepInWindow(); renderStats(); } });
   $('#statTrend').addEventListener('click', (e) => {
     const r = e.target.closest('[data-p]'); if (!r) return;
     ST.period = r.dataset.p; renderStats();
@@ -1307,7 +1327,6 @@ function bind() {
     if (t !== S.type) { setType(t); renderAdd(); }
   });
   $('#date').addEventListener('change', (e) => { if (e.target.value) { S.date = e.target.value; renderAdd(); } });
-  $('#picked').addEventListener('click', () => { $('#allCats').classList.add('on'); $('#toggleAll').textContent = '收合'; $('#allCats').scrollIntoView({ block: 'nearest' }); });
   $('#toggleAll').addEventListener('click', () => {
     const on = $('#allCats').classList.toggle('on');
     $('#toggleAll').textContent = on ? '收合' : '全部分類';

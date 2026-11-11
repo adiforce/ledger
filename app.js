@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.13.0';
+const VERSION = '1.14.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -230,8 +230,15 @@ function renderCats() {
     const c = S.catById.get(id); if (!c) return '';
     return `<button class="tile${id === S.subId ? ' on' : ''}" data-sub="${esc(id)}"><span class="e">${catLook(c.parentId || c.id)[0]}</span><span class="n">${esc(c.name)}</span></button>`;
   }).join('') + '<button class="tile more" id="moreCats"><span class="e">⋯</span><span class="n">更多</span></button>';
-  $('#allCats').innerHTML = roots(S.type).map((r) =>
-    `<div class="root">${catLook(r.id)[0]} ${esc(r.name)}</div><div class="cat-grid">${subsOf(r.id).map((s) => chip(s.id, s.id === S.subId, false)).join('')}</div>`).join('');
+  $('#allCats').innerHTML = roots(S.type).map((r) => {
+    const [e, h] = catLook(r.id);
+    const subs = subsOf(r.id);
+    const has = subs.some((s) => s.id === S.subId);
+    return `<section class="cs${has ? ' has' : ''}" style="--h:${h}">
+      <div class="cs-h"><span class="cs-e">${e}</span><b>${esc(r.name)}</b></div>
+      <div class="cs-g">${subs.map((s) => `<button class="st${s.id === S.subId ? ' on' : ''}" data-sub="${esc(s.id)}">${esc(s.name)}</button>`).join('')}</div>
+    </section>`;
+  }).join('');
 }
 function renderSugs() {
   const q = $('#note').value.trim();
@@ -257,8 +264,7 @@ function renderAdd() {
 function renderNotePrev() {
   const v = $('#note').value.trim();
   $('#notePrev').textContent = v;
-  $('#btnNote').textContent = v ? '✎ 改備註' : '✎ 備註';
-  $('#btnNote').classList.toggle('on', !!v);
+
 }
 /* ── 抽屜 ── */
 function openDrawer(id) {
@@ -1371,7 +1377,6 @@ function bind() {
   };
   $('#freqCats').addEventListener('click', pickCat);
   $('#allCats').addEventListener('click', pickCat);
-  $('#btnNote').addEventListener('click', () => openDrawer('noteDrawer'));
   $('#notePrev').addEventListener('click', () => openDrawer('noteDrawer'));
   $('#drawerBg').addEventListener('click', closeDrawers);
   document.querySelectorAll('.drawer [data-close]').forEach((b) => b.addEventListener('click', closeDrawers));

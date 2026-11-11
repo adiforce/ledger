@@ -348,6 +348,81 @@ nav.tabs button.dot::after{left:calc(50% + 14px);background:var(--ribbon)}
   .add-bottom .keypad .ok{font-size:14px}
 }
 
+/* ── v1.14 ── */
+.imp{z-index:18}
+.add-top>*:not(.day-inline){flex-shrink:0}
+.add-top .day-inline{flex-shrink:1;min-height:0}
+.cs{flex-shrink:0}
+.mask{z-index:30}
+.update{z-index:31}
+.toast{z-index:32}
+/* 浮動選單 */
+main{padding-bottom:calc(78px + env(safe-area-inset-bottom))}
+nav.tabs{position:fixed;left:14px;right:14px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:15;max-width:520px;margin:0 auto;
+  padding:4px 6px;border:1px solid var(--line);border-radius:26px;background:var(--card);
+  box-shadow:0 10px 28px rgba(12,45,40,.18),0 2px 6px rgba(12,45,40,.08)}
+nav.tabs button{padding:6px 0 5px;font-size:11px;border-radius:20px}
+nav.tabs svg{width:20px;height:20px}
+nav.tabs button svg{padding:2px 14px}
+@media (prefers-color-scheme: dark){nav.tabs{box-shadow:0 10px 28px rgba(0,0,0,.5)}}
+/* 當天紀錄固定 3 行高 */
+.day-inline{flex:0 1 auto;max-height:150px}
+.add-top .amount{margin-top:auto}
+/* 大備註框 */
+.note-box{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line;text-align:left;
+  width:100%;margin-top:8px;min-height:50px;padding:12px 14px;font-size:16px;line-height:1.4;color:var(--text);
+  background:var(--card);border:1px solid var(--line);border-radius:14px}
+.note-box:empty::before{content:"✎  點這裡寫備註";color:var(--sub)}
+/* 小分類 */
+.tile{height:40px;flex-direction:row;justify-content:center;gap:5px;font-size:13px;padding:0 6px;border-radius:12px}
+.tile .e{font-size:16px}
+/* 全部分類：分區塊 */
+#allCats{display:flex;flex-direction:column;gap:10px;padding-top:4px}
+.cs{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.cs.has{border-color:var(--accent)}
+.cs-h{display:flex;align-items:center;gap:8px;padding:8px 12px;background:color-mix(in srgb,var(--h) 14%,var(--card))}
+.cs-e{font-size:18px;line-height:1}
+.cs-h b{font-size:15px}
+.cs-g{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px}
+.st{height:38px;border-radius:10px;background:var(--bg);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px}
+.st.on{background:var(--accent);color:var(--on-accent);font-weight:600}
+@media (max-height: 720px){
+  main{padding-bottom:calc(70px + env(safe-area-inset-bottom))}
+  .tile{height:42px;flex-direction:column;gap:0;font-size:12px;padding:0 2px}
+  .tile .e{font-size:15px}
+  .note-box{min-height:42px;padding:9px 12px;font-size:15px;-webkit-line-clamp:1}
+  .day-inline{max-height:100px}
+}
+
+/* v1.14：日期卡片內含摘要；金額與支出/收入同一行 */
+.date-hero{display:grid;grid-template-columns:1fr auto;grid-template-areas:"d b" "s s";align-items:center;column-gap:10px;row-gap:2px;padding:10px 14px}
+.dh-pick{grid-area:d;position:relative;min-width:0;display:block}
+.dh-pick input{position:absolute;inset:0;opacity:0;width:100%;height:100%;min-width:0;margin:0;border:0;-webkit-appearance:none;appearance:none;font-size:16px}
+.date-hero .dh-badge{grid-area:b}
+.add-top .date-hero .day-sum{grid-area:s;padding:2px 0 0;font-size:13px;display:flex;width:100%}
+.date-hero .dh-date{display:block}
+.amt-row{display:flex;align-items:center;gap:6px;margin-top:auto;padding-top:6px;flex-shrink:0}
+.add-top .amt-row .amount{flex:1;min-width:0;margin:0;padding:0;text-align:right;font-size:44px;line-height:1.15;overflow-x:auto;white-space:nowrap}
+.amt-row .type-toggle span{padding:5px 11px}
+.add-bottom .keypad button{height:clamp(42px,5.8vh,56px)}
+.day-inline{margin:8px 0 0}
+.date-hero .dh-date{font-size:22px}
+.add-top .date-hero{padding:8px 14px}
+.note-box{min-height:44px;padding:10px 14px;margin-top:6px}
+.dn{height:32px}
+.tile{height:38px;gap:3px;padding:0 3px;letter-spacing:-.2px}
+.tile .e{font-size:15px}
+.tiles{gap:5px}
+.add-bottom{gap:6px}
+.add-bottom .keypad{gap:6px}
+.add-bottom .keypad button{height:clamp(40px,5.4vh,54px)}
+main{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+@media (max-height: 720px){
+  .date-hero{padding:7px 12px}
+  .add-top .amt-row .amount{font-size:36px}
+  .add-bottom .keypad button{height:40px}
+}
+
 .toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);background:var(--text);color:var(--bg);
   padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -370,22 +445,21 @@ nav.tabs button.dot::after{left:calc(50% + 14px);background:var(--ribbon)}
         <button id="btnCancel">取消</button>
       </div>
       <div class="add-top" id="dayZone">
-        <label class="date-hero" id="dateHero">
-          <span class="dh-date" id="dateLabel"></span><span class="dh-badge" id="dateBadge"></span>
-          <input type="date" id="date" aria-label="選擇日期">
-        </label>
-        <button class="day-sum" id="daySum"></button>
+        <div class="date-hero" id="dateHero">
+          <label class="dh-pick"><span class="dh-date" id="dateLabel"></span><input type="date" id="date" aria-label="選擇日期"></label>
+          <span class="dh-badge" id="dateBadge"></span>
+          <button class="day-sum" id="daySum"></button>
+        </div>
         <div class="day-inline" id="dayInline"></div>
-        <div class="amount" id="amount"></div>
-        <div class="note-prev" id="notePrev"></div>
+        <div class="amt-row">
+          <button class="type-toggle" id="typeToggle"></button>
+          <label class="pill rep" id="repeatPill"><span id="repeatLabel">不重複</span><select id="repeat"><option value="">不重複</option><option value="monthly">每月</option><option value="yearly">每年</option></select></label>
+          <div class="amount" id="amount"></div>
+        </div>
+        <div class="note-box" id="notePrev" role="button" tabindex="0"></div>
         <div class="budget-line" id="budgetLine"></div>
       </div>
       <div class="add-bottom">
-        <div class="ctl-row">
-          <button class="type-toggle" id="typeToggle"></button>
-          <label class="pill rep" id="repeatPill"><span id="repeatLabel">不重複</span><select id="repeat"><option value="">不重複</option><option value="monthly">每月</option><option value="yearly">每年</option></select></label>
-          <button class="pill" id="btnNote">✎ 備註</button>
-        </div>
         <div class="tiles" id="freqCats"></div>
         <div class="day-nav-row"><button class="dn" id="dayPrev">‹ 前一天</button><button class="dn mid" id="dayToday">回今天</button><button class="dn" id="dayNext">後一天 ›</button></div>
         <div class="keypad" id="keypad">

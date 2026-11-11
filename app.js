@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -467,33 +467,250 @@ async function exportData() {
   renderSettings(); renderBackupBanner();
 }
 
+/* ── 匯入：解析檔案 → 預覽 → 勾選 → 寫入 ── */
+
+// 快捷記帳本2 舊分類 → 新分類（大類, 小類）；'*' 代表該大類全部
+const OLD_MAP = {
+  '吃/食物': ['餐飲', '正餐'], '吃/飲料': ['餐飲', '飲料咖啡'], '吃/咖啡': ['餐飲', '飲料咖啡'], '吃/水': ['餐飲', '飲料咖啡'],
+  '吃/牛奶': ['餐飲', '飲料咖啡'], '吃/雜項': ['餐飲', '零食甜點'], '吃/烘焙': ['餐飲', '零食甜點'], '吃/水果': ['餐飲', '水果'],
+  '吃/保健食品': ['醫療保險', '保健食品'], 'Food/Meal': ['餐飲', '正餐'], 'Food/Drink': ['餐飲', '飲料咖啡'], 'Food/Groceries': ['餐飲', '食材'],
+  '車/油費': ['交通', '油費'], '車/停車費': ['交通', '停車費'], '車/維修': ['交通', '維修保養'], '車/洗車': ['交通', '維修保養'],
+  '車/雜項': ['交通', '維修保養'], '車/Insurance': ['醫療保險', '保險'], '車/大眾運輸': ['交通', '大眾運輸'], '交通/*': ['交通', '大眾運輸'],
+  'Transportation/Metro': ['交通', '大眾運輸'], 'Transportation/Airfare': ['交通', '機票'],
+  '房屋/房貸': ['居住', '房貸'], '房屋/管理費': ['居住', '管理費'], '房屋/傢俱': ['居住', '家具家用'], '房屋/雜項': ['居住', '家具家用'], '房屋/稅險': ['居住', '稅費'],
+  '帳單/電費': ['帳單', '水電瓦斯'], '帳單/水費': ['帳單', '水電瓦斯'], '帳單/瓦斯費': ['帳單', '水電瓦斯'], '帳單/電話費': ['帳單', '電話網路'],
+  '帳單/網路費': ['帳單', '電話網路'], '帳單/税': ['居住', '稅費'], '帳單/保險': ['醫療保險', '保險'], 'Bills/*': ['帳單', '電話網路'],
+  '個人/電子產品': ['購物', '3C'], '個人/衣': ['購物', '服飾'], '個人/保養品': ['購物', '美容美髮'], '個人/髮': ['購物', '美容美髮'],
+  '個人/書': ['購物', '書籍'], '個人/醫療': ['醫療保險', '醫療'], '個人/保險': ['醫療保險', '保險'], '個人/運動': ['娛樂', '運動'],
+  '個人/雜項': ['其他', '其他'], 'Personal/*': ['其他', '其他'], '教育/*': ['購物', '書籍'],
+  '雜項/玩樂': ['娛樂', '玩樂'], '雜項/夾娃娃': ['娛樂', '夾娃娃'], '雜項/雜貨': ['購物', '日用雜貨'], '雜項/送禮': ['人情', '送禮'], '雜項/毛毛': ['寵物', '貓'],
+  '皓皓的吃喝玩樂拉撒睡/*': ['皓皓', '皓皓'], '工作/*': ['其他', '其他'], '股票/*': ['其他', '其他'],
+  '薪水/*': ['收入', '薪水'], 'Income/*': ['收入', '薪水'], '拍賣/*': ['收入', '拍賣'], '統一發票/*': ['收入', '發票中獎'], '其他/*': ['收入', '其他收入'],
+};
+// 用預設分類的位置換成 ID（使用者改過分類名稱也對得上）
+function defaultCatId(type, root, sub) {
+  const tree = DEFAULT_TREE[type];
+  const roots = Object.keys(tree);
+  const i = roots.indexOf(root); if (i < 0) return null;
+  const j = tree[root].indexOf(sub); if (j < 0) return null;
+  const rid = `${type.slice(0, 3)}-${pad(i)}`;
+  return [rid, `${rid}-${pad(j)}`];
+}
+function mapOldCategory(root, sub, type) {
+  if (type === 'income' && root === '股票') return ['收入', '股票'];
+  return OLD_MAP[`${root}/${sub}`] || OLD_MAP[`${root}/*`] || null;
+}
+
+async function unzipEntry(buf, wanted) {
+  const v = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 70000); i--) if (v.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('不是有效的 .sbk（zip）檔');
+  const count = v.getUint16(eocd + 10, true);
+  let p = v.getUint32(eocd + 16, true);
+  const dec = new TextDecoder();
+  for (let k = 0; k < count; k++) {
+    if (v.getUint32(p, true) !== 0x02014b50) break;
+    const method = v.getUint16(p + 10, true), size = v.getUint32(p + 20, true);
+    const nl = v.getUint16(p + 28, true), el = v.getUint16(p + 30, true), cl = v.getUint16(p + 32, true);
+    const local = v.getUint32(p + 42, true);
+    const name = dec.decode(buf.subarray(p + 46, p + 46 + nl));
+    if (name === wanted || name.endsWith('/' + wanted)) {
+      const start = local + 30 + v.getUint16(local + 26, true) + v.getUint16(local + 28, true);
+      const data = buf.subarray(start, start + size);
+      if (method === 0) return data;
+      if (method !== 8) throw new Error('不支援的壓縮格式');
+      if (typeof DecompressionStream === 'undefined') throw new Error('iOS 版本太舊，請更新到 16.4 以上');
+      const out = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      return new Uint8Array(await new Response(out).arrayBuffer());
+    }
+    p += 46 + nl + el + cl;
+  }
+  throw new Error(`備份裡找不到 ${wanted}`);
+}
+let sqlPromise;
+function loadSql() {
+  if (!sqlPromise) {
+    sqlPromise = new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'lib/sql-wasm.js';
+      s.onload = () => initSqlJs({ locateFile: (f) => 'lib/' + f }).then(res, rej);
+      s.onerror = () => rej(new Error('讀取元件載入失敗，請連網後重開 App 一次'));
+      document.head.appendChild(s);
+    }).catch((e) => { sqlPromise = null; throw e; });
+  }
+  return sqlPromise;
+}
+const tw8Date = (sec) => {
+  const ts = Number(sec);
+  if (!(ts > 0)) return null;
+  const d = new Date(ts * 1000 + 8 * 3600000);
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+};
+async function parseSbk(file) {
+  const bytes = await unzipEntry(new Uint8Array(await file.arrayBuffer()), 'spending.dat');
+  const SQL = await loadSql();
+  const sdb = new SQL.Database(bytes);
+  const rows = (sql) => { const st = sdb.prepare(sql), out = []; while (st.step()) out.push(st.getAsObject()); st.free(); return out; };
+  try {
+    const name = new Map(), kind = new Map();
+    for (const r of rows('SELECT oldTitle, title, type FROM category')) {
+      name.set(String(r.oldTitle), r.title);
+      kind.set(String(r.oldTitle), r.type === 11 ? 'income' : r.type === 12 ? 'expense' : null);
+    }
+    const bookName = new Map(rows('SELECT oldTitle, title FROM account').map((r) => [String(r.oldTitle), r.title]));
+    const out = [];
+    let diary = 0, skipped = 0;
+    for (const r of rows('SELECT * FROM transactions WHERE deleted = 0')) {
+      const t = r.type, root = name.get(String(r.category)) || '', sub = name.get(String(r.subcategory)) || '';
+      const date = tw8Date(r.datetime);
+      if (t === 61) continue;                          // 預算設定
+      if (root === '重點日記') { diary++; continue; }  // 日記不是帳
+      if (![11, 12, 85].includes(t) || !date) { skipped++; continue; }
+      const type = t === 85 ? (kind.get(String(r.category)) || 'expense') : (t === 11 ? 'income' : 'expense');
+      const m = mapOldCategory(root, sub, type);
+      const fallback = type === 'income' ? ['收入', '其他收入'] : ['其他', '其他'];
+      const [cid, sid] = defaultCatId(type, ...(m || fallback)) || defaultCatId(type, ...fallback);
+      const rec = { id: String(r.eid), date, type, amount: Number(r.amount) || 0, categoryId: cid, subcategoryId: sid,
+        note: String(r.note || '').trim(), legacyCategory: `${root}/${sub}` };
+      if (t === 85) rec.scheduled = true;
+      if (r.repeat === 'Monthly') rec.repeat = 'monthly';
+      if (r.repeat === 'Yearly') rec.repeat = 'yearly';
+      const bk = bookName.get(String(r.book));
+      if (bk && bk !== '我的消費記錄') rec.legacyBook = bk;
+      if (!m) rec.unmapped = true;
+      out.push(rec);
+    }
+    return { source: '快捷記帳備份', tx: out, categories: [], budgets: null, note: diary || skipped ? `（已排除日記 ${diary} 筆、空白紀錄 ${skipped} 筆）` : '' };
+  } finally { sdb.close(); }
+}
+async function parseJson(file) {
+  const data = JSON.parse(await file.text());
+  if (data.format !== 'ledger-import' || !Array.isArray(data.transactions)) throw new Error('不是這個 App 的匯入檔');
+  const tx = data.transactions.filter((t) => t.id && t.date && t.amount != null).map((t) => {
+    const r = { id: String(t.id), date: t.date, type: t.type === 'income' ? 'income' : 'expense', amount: Number(t.amount),
+      categoryId: t.categoryId, subcategoryId: t.subcategoryId, note: t.note || '' };
+    for (const k of ['scheduled', 'repeat', 'legacyBook', 'legacyCategory', 'deleted', 'createdAt', 'updatedAt']) if (t[k]) r[k] = t[k];
+    return r;
+  });
+  const categories = (data.categories || []).map(({ id, name, parentId, type, order }) => ({ id, name, parentId: parentId ?? null, type, order: order ?? 0 }));
+  return { source: '備份檔', tx, categories, budgets: Array.isArray(data.budgets) ? data.budgets : null, note: '' };
+}
+
+const IMP = { all: [], shown: [], sel: new Set(), dup: new Set(), ignored: new Set(), showIgnored: false, limit: 200, parsed: null };
 async function importData(file) {
   busy(true);
   try {
-    const data = JSON.parse(await file.text());
-    if (data.format !== 'ledger-import' || !Array.isArray(data.transactions)) throw new Error('不是這個 App 的匯入檔');
-    const now = new Date().toISOString();
-    const cats = (data.categories || []).map(({ id, name, parentId, type, order }) => ({ id, name, parentId: parentId ?? null, type, order: order ?? 0 }));
-    const tx = data.transactions.filter((t) => t.id && t.date && t.amount != null).map((t) => {
-      const r = { id: String(t.id), date: t.date, type: t.type === 'income' ? 'income' : 'expense', amount: Number(t.amount),
-        categoryId: t.categoryId, subcategoryId: t.subcategoryId, note: t.note || '',
-        createdAt: t.createdAt || t.date + 'T00:00:00', updatedAt: t.updatedAt || now };
-      for (const k of ['scheduled', 'repeat', 'legacyBook', 'legacyCategory', 'deleted']) if (t[k]) r[k] = t[k];
-      return r;
-    });
-    if (cats.length) await putMany('categories', cats);
-    await putMany('tx', tx);
-    if (Array.isArray(data.budgets)) await setMeta('budgets', data.budgets);
+    const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+    const parsed = head[0] === 0x50 && head[1] === 0x4b ? await parseSbk(file) : await parseJson(file);
+    openImport(parsed, new Set((await getMeta('importIgnored')) || []));
+  } catch (err) {
+    toast('匯入失敗：' + (err.message || err));
+  } finally { busy(false); }
+}
+function openImport(parsed, ignored) {
+  const have = new Set(S.tx.map((t) => t.id));
+  const keyOf = (t) => `${t.date}|${t.type}|${t.amount}`;
+  const existingKeys = new Set(live().map(keyOf));
+  IMP.parsed = parsed;
+  IMP.ignored = ignored;
+  IMP.all = parsed.tx.filter((t) => !have.has(t.id) && !t.deleted).sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? 1 : -1));
+  IMP.existing = parsed.tx.length - IMP.all.length;
+  IMP.dup = new Set(IMP.all.filter((t) => existingKeys.has(keyOf(t))).map((t) => t.id));
+  IMP.sel = new Set(IMP.all.filter((t) => !IMP.dup.has(t.id) && !ignored.has(t.id)).map((t) => t.id));
+  IMP.showIgnored = false; IMP.limit = 200;
+  $('#impView').classList.add('on');
+  renderImport();
+}
+function impRowHTML(t) {
+  const on = IMP.sel.has(t.id), inc = t.type === 'income';
+  const tags = (IMP.dup.has(t.id) ? '<span class="tag warn">可能重複</span>' : '') + (t.scheduled ? '<span class="tag">預定</span>' : '') +
+    (t.unmapped ? '<span class="tag warn">分類未對應</span>' : '') + (IMP.ignored.has(t.id) ? '<span class="tag">之前略過</span>' : '');
+  const sub = catName(t.subcategoryId), root = catName(t.categoryId);
+  return `<label class="ir${on ? '' : ' off'}"><input type="checkbox" data-imp="${esc(t.id)}"${on ? ' checked' : ''}>
+    <div class="t"><div class="c">${esc(root !== sub ? `${root} › ${sub}` : sub)}${tags}</div><div class="n">${esc(t.note || (t.unmapped ? '舊分類：' + t.legacyCategory : ''))}</div></div>
+    <div class="a${inc ? ' inc' : ''}">${inc ? '+' : ''}${money(t.amount)}</div></label>`;
+}
+function renderImport() {
+  const visible = IMP.all.filter((t) => IMP.showIgnored || !IMP.ignored.has(t.id));
+  const hiddenIgn = IMP.all.length - visible.length;
+  const nSel = IMP.all.filter((t) => IMP.sel.has(t.id)).length;
+  const nDup = visible.filter((t) => IMP.dup.has(t.id)).length;
+  $('#impSum').innerHTML = `${esc(IMP.parsed.source)}裡有 <b>${IMP.parsed.tx.length.toLocaleString()}</b> 筆${esc(IMP.parsed.note)}<br>
+    已經在 App 裡的 <b>${IMP.existing.toLocaleString()}</b> 筆會自動略過。<br>
+    新的有 <b>${visible.length.toLocaleString()}</b> 筆${nDup ? `，其中 <b>${nDup}</b> 筆「可能重複」（同一天、同金額 App 裡已經有），預設不勾` : ''}。
+    ${hiddenIgn ? `<br>另有 ${hiddenIgn} 筆是你之前選擇略過的 <button id="impShowIgn">顯示</button>` : ''}`;
+  const shown = visible.slice(0, IMP.limit);
+  let html = '', day = '';
+  for (const t of shown) {
+    if (t.date !== day) {
+      if (day) html += '</div>';
+      day = t.date;
+      html += `<div class="day-h"><span>${t.date.slice(0, 4)} ${dayLabel(t.date)}</span></div><div class="list">`;
+    }
+    html += impRowHTML(t);
+  }
+  if (day) html += '</div>';
+  if (!visible.length) html = '<div class="empty">沒有新的紀錄可以匯入</div>';
+  if (visible.length > shown.length) html += `<button class="more" id="impMore">再顯示 200 筆（還有 ${visible.length - shown.length} 筆）</button>`;
+  $('#impList').innerHTML = html;
+  $('#impGo').textContent = nSel ? `匯入選取的 ${nSel.toLocaleString()} 筆` : '沒有選取';
+  $('#impGo').disabled = !nSel && !IMP.all.length;
+  if (!nSel && IMP.all.length) { $('#impGo').textContent = '不匯入，只記住略過'; $('#impGo').disabled = !$('#impRemember').checked; }
+}
+function closeImport() { $('#impView').classList.remove('on'); IMP.all = []; IMP.parsed = null; }
+async function commitImport() {
+  const now = new Date().toISOString();
+  const pick = IMP.all.filter((t) => IMP.sel.has(t.id)).map((t) => {
+    const r = { ...t, createdAt: t.createdAt || t.date + 'T00:00:00', updatedAt: t.updatedAt || now };
+    delete r.unmapped;
+    return r;
+  });
+  busy(true);
+  try {
+    const haveCat = new Set(S.cats.map((c) => c.id));
+    const newCats = (IMP.parsed.categories || []).filter((c) => !haveCat.has(c.id));
+    if (newCats.length) await putMany('categories', newCats);
+    if (pick.length) await putMany('tx', pick);
+    if (IMP.parsed.budgets && !(await getMeta('budgets'))) await setMeta('budgets', IMP.parsed.budgets);
+    if ($('#impRemember').checked) {
+      for (const t of IMP.all) { if (IMP.sel.has(t.id)) IMP.ignored.delete(t.id); else IMP.ignored.add(t.id); }
+      await setMeta('importIgnored', [...IMP.ignored]);
+    }
     navigator.storage?.persist?.();
     await loadAll();
     resetForm();
-    toast(`已匯入 ${tx.length.toLocaleString()} 筆`);
+    const skipped = IMP.all.length - pick.length;
+    closeImport();
+    toast(pick.length ? `已匯入 ${pick.length.toLocaleString()} 筆${skipped ? `，略過 ${skipped} 筆` : ''}` : `已記住略過 ${skipped} 筆`);
     renderSettings();
+    if (pick.length) scheduleSync(1000);
   } catch (err) {
     toast('匯入失敗：' + err.message);
-  } finally {
-    busy(false);
-  }
+  } finally { busy(false); }
+}
+function bindImport() {
+  $('#impCancel').addEventListener('click', closeImport);
+  $('#impGo').addEventListener('click', commitImport);
+  $('#impRemember').addEventListener('change', renderImport);
+  $('#impList').addEventListener('change', (e) => {
+    const cb = e.target.closest('[data-imp]'); if (!cb) return;
+    if (cb.checked) IMP.sel.add(cb.dataset.imp); else IMP.sel.delete(cb.dataset.imp);
+    cb.closest('.ir').classList.toggle('off', !cb.checked);
+    const n = IMP.all.filter((t) => IMP.sel.has(t.id)).length;
+    $('#impGo').textContent = n ? `匯入選取的 ${n.toLocaleString()} 筆` : '不匯入，只記住略過';
+    $('#impGo').disabled = !n && !$('#impRemember').checked;
+  });
+  $('#impList').addEventListener('click', (e) => { if (e.target.id === 'impMore') { IMP.limit += 200; renderImport(); } });
+  $('#impSum').addEventListener('click', (e) => { if (e.target.id === 'impShowIgn') { IMP.showIgnored = true; renderImport(); } });
+  document.querySelector('.imp-ctl').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sel]'); if (!b) return;
+    const vis = IMP.all.filter((t) => IMP.showIgnored || !IMP.ignored.has(t.id));
+    if (b.dataset.sel === 'all') vis.forEach((t) => IMP.sel.add(t.id));
+    if (b.dataset.sel === 'none') vis.forEach((t) => IMP.sel.delete(t.id));
+    if (b.dataset.sel === 'nodup') vis.forEach((t) => (IMP.dup.has(t.id) ? IMP.sel.delete(t.id) : IMP.sel.add(t.id)));
+    renderImport();
+  });
 }
 
 async function catAction(e) {
@@ -933,6 +1150,7 @@ function bind() {
   setupSwipe();
   $('#filterClear').addEventListener('click', () => { S.filter = null; renderList(); });
   bindStats();
+  bindImport();
   $('#budgetEdit').addEventListener('change', onBudgetInput);
   $('#syncUrl').addEventListener('change', onSyncCfgChange);
   $('#syncKey').addEventListener('change', onSyncCfgChange);
@@ -973,6 +1191,10 @@ function setupSW() {
   let reloaded = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloaded) { reloaded = true; location.reload(); } });
 }
+
+/* iOS 會忽略 viewport 的禁止縮放，所以直接擋手勢 */
+['gesturestart', 'gesturechange', 'gestureend'].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 
 (async function init() {
   try {

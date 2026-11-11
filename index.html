@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -26,6 +26,8 @@
   }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html{touch-action:manipulation;-webkit-text-size-adjust:100%}
 html,body{margin:0;height:100%}
 body{background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif;
   -webkit-user-select:none;user-select:none;overscroll-behavior:none}
@@ -164,6 +166,32 @@ nav.tabs svg{width:22px;height:22px}
 #syncStatus.over-t{color:var(--danger)}
 .num-in{width:120px;text-align:right;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 8px;font-size:16px;-webkit-user-select:text;user-select:text}
 
+/* 匯入預覽 */
+.imp{display:none;position:fixed;inset:0;z-index:7;background:var(--bg);flex-direction:column;padding-top:env(safe-area-inset-top)}
+.imp.on{display:flex}
+.imp-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 6px;max-width:560px;width:100%;margin:0 auto}
+.imp-head h2{margin:0;font-size:18px}
+.imp-head button{color:var(--accent);font-size:15px}
+.imp-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 16px 16px;max-width:560px;width:100%;margin:0 auto}
+.imp-sum{font-size:14px;line-height:1.7;margin:4px 0 10px}
+.imp-sum b{font-variant-numeric:tabular-nums}
+.imp-sum button{color:var(--accent);font-size:14px}
+.imp-ctl{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.imp-opt{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--sub);margin:4px 0 10px}
+.imp-opt input,.ir input{width:20px;height:20px;accent-color:var(--accent);flex:none;margin:0}
+.ir{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line);background:var(--card)}
+.ir:first-child{border-top:0}
+.ir.off .t,.ir.off .a{opacity:.45}
+.ir .t{flex:1;min-width:0}
+.ir .c{font-size:15px}
+.ir .n{font-size:13px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ir .a{font-variant-numeric:tabular-nums}
+.ir .a.inc{color:var(--income)}
+.tag.warn{border-color:var(--danger);color:var(--danger)}
+.imp-foot{padding:10px 16px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card)}
+.imp-foot button{display:block;width:100%;max-width:528px;margin:0 auto;background:var(--accent);color:var(--on-accent);border-radius:12px;padding:13px;font-size:16px;font-weight:600}
+.imp-foot button:disabled{opacity:.4}
+
 .toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);background:var(--text);color:var(--bg);
   padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -240,7 +268,7 @@ nav.tabs svg{width:22px;height:22px}
       <div class="group-h">資料</div>
       <div class="group">
         <button class="item accent" id="btnExport">匯出備份<small id="lastExport"></small></button>
-        <label class="item accent">匯入資料（JSON）<small>同 ID 會覆蓋</small><input type="file" id="fileImport" accept=".json,application/json" hidden></label>
+        <label class="item accent">匯入資料<small>快捷記帳 .sbk 或備份 .json</small><input type="file" id="fileImport" hidden></label>
         <div class="item"><span>目前筆數</span><small id="countInfo"></small></div>
       </div>
       <p class="note-text">資料只存在這支手機的瀏覽器裡。iOS 在空間不足時可能清掉網站資料，建議每個月匯出一次備份，存到雲端硬碟或「檔案」App。</p>
@@ -277,6 +305,20 @@ nav.tabs svg{width:22px;height:22px}
     <button data-v="v-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>統計</button>
     <button data-v="v-set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>設定</button>
   </nav>
+</div>
+<div class="imp" id="impView">
+  <div class="imp-head"><h2>匯入預覽</h2><button id="impCancel">取消</button></div>
+  <div class="imp-body">
+    <div class="imp-sum" id="impSum"></div>
+    <div class="imp-ctl">
+      <button class="chip" data-sel="all">全選</button>
+      <button class="chip" data-sel="none">全不選</button>
+      <button class="chip" data-sel="nodup">不選可能重複的</button>
+    </div>
+    <label class="imp-opt"><input type="checkbox" id="impRemember" checked>沒勾的以後不要再出現</label>
+    <div id="impList"></div>
+  </div>
+  <div class="imp-foot"><button id="impGo">匯入</button></div>
 </div>
 <div class="toast" id="toast"></div>
 <div class="mask" id="mask">處理中…</div>

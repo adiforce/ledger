@@ -1,6 +1,6 @@
 // 改了任何檔案就把版本號 +1，手機才會抓到新版
-const CACHE = 'ledger-v1.2.0';
-const ASSETS = ['./', './index.html', './app.js', './manifest.webmanifest', './icon-180.png', './icon-512.png'];
+const CACHE = 'ledger-v1.3.0';
+const ASSETS = ['./', './index.html', './app.js', './manifest.webmanifest', './icon-180.png', './icon-512.png', './lib/sql-wasm.js', './lib/sql-wasm.wasm'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));

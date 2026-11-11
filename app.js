@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.8.1';
+const VERSION = '1.9.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -1359,6 +1359,7 @@ function bind() {
   $('#btnSync').addEventListener('click', async () => { await onSyncCfgChange(); syncNow(true); });
 
   $('#btnExport').addEventListener('click', exportData);
+  $('#btnUpdate').addEventListener('click', () => checkUpdate(true));
   $('#fileImport').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) importData(f); e.target.value = ''; });
   $('#btnWipe').addEventListener('click', async () => {
     if (!confirm('確定清除所有資料？建議先匯出備份。')) return;
@@ -1376,9 +1377,26 @@ function shiftMonth(d) {
 }
 
 /* ── Service Worker ── */
+let SWREG = null, lastUpdCheck = 0;
+// 檢查新版本；manual = 使用者按「檢查更新」，有新版就直接套用並重新載入
+async function checkUpdate(manual) {
+  if (!SWREG) { if (manual) toast('這個環境不支援自動更新'); return; }
+  if (!manual && Date.now() - lastUpdCheck < 5 * 60000) return;
+  lastUpdCheck = Date.now();
+  if (manual) toast('檢查中…');
+  try { await SWREG.update(); } catch { if (manual) toast('檢查失敗，請確認有網路'); return; }
+  const w = SWREG.waiting || SWREG.installing;
+  if (!w) { if (manual) toast(`已經是最新版 ${VERSION}`); return; }
+  if (!manual) return;   // 自動檢查只顯示上方的「有新版本」提示
+  toast('下載新版中，完成後會自動重新開啟');
+  const go = () => w.postMessage('skipWaiting');
+  if (w.state === 'installed') go();
+  else w.addEventListener('statechange', () => { if (w.state === 'installed') go(); });
+}
 function setupSW() {
   if (!('serviceWorker' in navigator)) return;
   navigator.serviceWorker.register('sw.js').then((reg) => {
+    SWREG = reg;
     const show = (w) => {
       const bar = $('#updateBar');
       bar.classList.add('on');
@@ -1411,6 +1429,6 @@ document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.prev
   renderAdd();
   setupSW();
   window.addEventListener('online', () => syncNow(false));
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') autoSync(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { autoSync(); checkUpdate(false); } });
   setTimeout(autoSync, 1500);
 })();

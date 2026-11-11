@@ -206,6 +206,8 @@ nav.tabs button.dot::after{content:"";position:absolute;top:7px;left:calc(50% + 
 .day-sum .go{margin-left:auto}
 #dayList{margin-top:18px}
 #dayList:empty{display:none}
+@keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+.day-h.flash{animation:flash 1.2s ease-out;border-radius:8px}
 .row.editing{background:var(--accent-soft)}
 
 .toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);background:var(--text);color:var(--bg);

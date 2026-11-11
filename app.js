@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.6.1';
+const VERSION = '1.6.2';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -1264,7 +1264,15 @@ function bind() {
     await softDelete(S.editing); resetForm(); leaveEdit();
   });
   $('#btnConfirm').addEventListener('click', confirmScheduled);
-  $('#daySum').addEventListener('click', () => $('#dayList').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  $('#daySum').addEventListener('click', () => {
+    const main = $('main'), target = $('#dayList');
+    if (!target.firstElementChild) return;
+    const top = main.scrollTop + target.getBoundingClientRect().top - main.getBoundingClientRect().top - 8;
+    try { main.scrollTo({ top, behavior: 'smooth' }); } catch { main.scrollTop = top; }
+    setTimeout(() => { if (Math.abs(main.scrollTop - top) > 40) main.scrollTop = top; }, 600);  // iOS 平滑捲動失敗時直接跳過去
+    const h = target.querySelector('.day-h');
+    h.classList.remove('flash'); void h.offsetWidth; h.classList.add('flash');
+  });
   $('#dayList').addEventListener('click', (e) => {
     const r = e.target.closest('.row'); if (!r || r.dataset.id === S.editing) return;
     if (!S.editing) { S.returnTo = 'add'; S.returnDate = S.date; }

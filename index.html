@@ -253,6 +253,13 @@ nav.tabs button.on svg{background:var(--accent-soft)}
 nav.tabs button.dot::after{left:calc(50% + 14px);background:var(--ribbon)}
 .all-cats .root{font-weight:600;color:var(--text)}
 
+#dayZone{touch-action:pan-y}
+@keyframes inL{from{transform:translateX(36px);opacity:.3}to{transform:none;opacity:1}}
+@keyframes inR{from{transform:translateX(-36px);opacity:.3}to{transform:none;opacity:1}}
+.sheet.inL{animation:inL .22s ease-out}
+.sheet.inR{animation:inR .22s ease-out}
+@media (prefers-reduced-motion: reduce){.sheet.inL,.sheet.inR{animation:none}}
+
 .toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);background:var(--text);color:var(--bg);
   padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -274,6 +281,7 @@ nav.tabs button.dot::after{left:calc(50% + 14px);background:var(--ribbon)}
         <button class="del" id="btnDelete">刪除</button>
         <button id="btnCancel">取消</button>
       </div>
+      <div id="dayZone">
       <div class="top-row">
         <button class="type-toggle" id="typeToggle"></button>
         <div class="pills"><label class="date-pill rep" id="repeatPill"><span id="repeatLabel">不重複</span><select id="repeat"><option value="">不重複</option><option value="monthly">每月</option><option value="yearly">每年</option></select></label>
@@ -283,6 +291,7 @@ nav.tabs button.dot::after{left:calc(50% + 14px);background:var(--ribbon)}
       <div class="sheet">
         <div class="sheet-top"><button class="picked" id="picked" type="button"></button><div class="amount" id="amount"></div></div>
         <textarea class="note" id="note" rows="1" placeholder="備註（例：午餐 美麗華）可換行" autocomplete="off"></textarea>
+      </div>
       </div>
       <div class="budget-line" id="budgetLine"></div>
       <div class="sugs" id="sugs"></div>

@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.7.0';
+const VERSION = '1.8.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -320,6 +320,42 @@ function leaveEdit() {
   if (back === 'sched') { switchView('v-list'); openSched(); }
   else if (back === 'add') { S.date = S.returnDate || today(); S.returnDate = null; switchView('v-add'); }
   else switchView('v-list');
+}
+
+/* ── 記一筆：左右滑換天 ── */
+function shiftDay(d) {
+  const t = new Date(S.date + 'T00:00:00');
+  t.setDate(t.getDate() + d);
+  S.date = ymd(t);
+  renderAdd();
+  const sh = document.querySelector('.sheet');
+  sh.classList.remove('inL', 'inR'); void sh.offsetWidth;
+  sh.classList.add(d > 0 ? 'inL' : 'inR');
+}
+function setupDaySwipe() {
+  const zone = $('#dayZone'), sheet = () => document.querySelector('.sheet');
+  let sx = 0, sy = 0, active = false, horiz = null;
+  zone.addEventListener('touchstart', (e) => {
+    active = e.touches.length === 1 && !S.editing && !e.target.closest('textarea');
+    if (!active) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY; horiz = null;
+  }, { passive: true });
+  zone.addEventListener('touchmove', (e) => {
+    if (!active) return;
+    const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
+    if (horiz === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) horiz = Math.abs(dx) > Math.abs(dy) * 1.2;
+    if (horiz) { sheet().style.transition = 'none'; sheet().style.transform = `translateX(${dx * 0.35}px)`; }
+  }, { passive: true });
+  const end = (e) => {
+    if (!active) return;
+    active = false;
+    const sh = sheet(); sh.style.transition = ''; sh.style.transform = '';
+    if (!horiz) return;
+    const dx = (e.changedTouches?.[0]?.clientX ?? sx) - sx;
+    if (Math.abs(dx) >= 50) shiftDay(dx < 0 ? 1 : -1);   // 往左滑 → 下一天
+  };
+  zone.addEventListener('touchend', end);
+  zone.addEventListener('touchcancel', () => { active = false; const sh = sheet(); sh.style.transform = ''; });
 }
 
 /* ── 記一筆：當天紀錄 ── */
@@ -1286,6 +1322,7 @@ function bind() {
     await softDelete(S.editing); resetForm(); leaveEdit();
   });
   $('#btnConfirm').addEventListener('click', confirmScheduled);
+  setupDaySwipe();
   $('#daySum').addEventListener('click', () => {
     const main = $('main'), target = $('#dayList');
     if (!target.firstElementChild) return;

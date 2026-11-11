@@ -231,7 +231,10 @@ nav.tabs button.dot::after{content:"";position:absolute;top:7px;left:calc(50% + 
 .sheet .note:focus{outline:none}
 .sheet .note{border:0;border-top:1px dashed var(--line);border-radius:0;background:transparent;margin:8px -4px 0;padding:9px 4px 7px;width:calc(100% + 8px)}
 .budget-line{margin-top:6px}
-.day-sum{padding:6px 2px 0}
+.day-sum{padding:0 2px;flex:1;min-width:0}
+.day-row{display:flex;align-items:center;gap:4px;margin-top:6px}
+.day-nav{flex:none;width:34px;height:30px;border-radius:10px;font-size:22px;line-height:1;color:var(--accent);background:var(--key-op)}
+.day-nav:active{filter:brightness(.92)}
 .chip{display:inline-flex;align-items:center;gap:5px;padding:7px 12px 7px 9px}
 .chip .e{font-size:15px;line-height:1}
 .chip.on{box-shadow:0 2px 6px rgba(15,110,102,.25)}
@@ -253,7 +256,7 @@ nav.tabs button.on svg{background:var(--accent-soft)}
 nav.tabs button.dot::after{left:calc(50% + 14px);background:var(--ribbon)}
 .all-cats .root{font-weight:600;color:var(--text)}
 
-#dayZone{touch-action:pan-y}
+#dayZone{touch-action:pan-y;-webkit-user-select:none}
 @keyframes inL{from{transform:translateX(36px);opacity:.3}to{transform:none;opacity:1}}
 @keyframes inR{from{transform:translateX(-36px);opacity:.3}to{transform:none;opacity:1}}
 .sheet.inL{animation:inL .22s ease-out}
@@ -287,7 +290,7 @@ nav.tabs button.dot::after{left:calc(50% + 14px);background:var(--ribbon)}
         <div class="pills"><label class="date-pill rep" id="repeatPill"><span id="repeatLabel">不重複</span><select id="repeat"><option value="">不重複</option><option value="monthly">每月</option><option value="yearly">每年</option></select></label>
         <label class="date-pill"><span id="dateLabel"></span><input type="date" id="date"></label></div>
       </div>
-      <button class="day-sum" id="daySum"></button>
+      <div class="day-row"><button class="day-nav" id="dayPrev" aria-label="前一天">‹</button><button class="day-sum" id="daySum"></button><button class="day-nav" id="dayNext" aria-label="下一天">›</button></div>
       <div class="sheet">
         <div class="sheet-top"><button class="picked" id="picked" type="button"></button><div class="amount" id="amount"></div></div>
         <textarea class="note" id="note" rows="1" placeholder="備註（例：午餐 美麗華）可換行" autocomplete="off"></textarea>

@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.8.0';
+const VERSION = '1.8.1';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -334,28 +334,32 @@ function shiftDay(d) {
 }
 function setupDaySwipe() {
   const zone = $('#dayZone'), sheet = () => document.querySelector('.sheet');
-  let sx = 0, sy = 0, active = false, horiz = null;
+  let sx = 0, sy = 0, lx = 0, active = false, horiz = null;
+  const reset = () => { const sh = sheet(); sh.style.transition = ''; sh.style.transform = ''; };
+  const finish = () => {
+    if (!active) return;
+    active = false; reset();
+    if (horiz && Math.abs(lx - sx) >= 45) shiftDay(lx < sx ? 1 : -1);   // 往左滑 → 下一天
+  };
   zone.addEventListener('touchstart', (e) => {
     active = e.touches.length === 1 && !S.editing && !e.target.closest('textarea');
     if (!active) return;
-    sx = e.touches[0].clientX; sy = e.touches[0].clientY; horiz = null;
+    sx = lx = e.touches[0].clientX; sy = e.touches[0].clientY; horiz = null;
   }, { passive: true });
   zone.addEventListener('touchmove', (e) => {
     if (!active) return;
-    const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
-    if (horiz === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) horiz = Math.abs(dx) > Math.abs(dy) * 1.2;
-    if (horiz) { sheet().style.transition = 'none'; sheet().style.transform = `translateX(${dx * 0.35}px)`; }
-  }, { passive: true });
-  const end = (e) => {
-    if (!active) return;
-    active = false;
-    const sh = sheet(); sh.style.transition = ''; sh.style.transform = '';
-    if (!horiz) return;
-    const dx = (e.changedTouches?.[0]?.clientX ?? sx) - sx;
-    if (Math.abs(dx) >= 50) shiftDay(dx < 0 ? 1 : -1);   // 往左滑 → 下一天
-  };
-  zone.addEventListener('touchend', end);
-  zone.addEventListener('touchcancel', () => { active = false; const sh = sheet(); sh.style.transform = ''; });
+    lx = e.touches[0].clientX;
+    const dx = lx - sx, dy = e.touches[0].clientY - sy;
+    if (horiz === null && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) horiz = Math.abs(dx) > Math.abs(dy);
+    if (horiz) {
+      e.preventDefault();   // 不讓 iOS 把手勢拿去捲動
+      const sh = sheet(); sh.style.transition = 'none'; sh.style.transform = `translateX(${dx * 0.35}px)`;
+    }
+  }, { passive: false });
+  zone.addEventListener('touchend', finish);
+  zone.addEventListener('touchcancel', finish);
+  $('#dayPrev').addEventListener('click', () => shiftDay(-1));
+  $('#dayNext').addEventListener('click', () => shiftDay(1));
 }
 
 /* ── 記一筆：當天紀錄 ── */

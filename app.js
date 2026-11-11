@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.9.0';
+const VERSION = '1.10.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -329,13 +329,15 @@ function shiftDay(d) {
   S.date = ymd(t);
   renderAdd();
   const sh = document.querySelector('.sheet');
-  sh.classList.remove('inL', 'inR'); void sh.offsetWidth;
-  sh.classList.add(d > 0 ? 'inL' : 'inR');
+  for (const el of [sh, document.querySelector('#dayList .list')]) {
+    if (!el) continue;
+    el.classList.remove('inL', 'inR'); void el.offsetWidth;
+    el.classList.add(d > 0 ? 'inL' : 'inR');
+  }
 }
-function setupDaySwipe() {
-  const zone = $('#dayZone'), sheet = () => document.querySelector('.sheet');
+function bindDaySwipe(zone, animEl) {
   let sx = 0, sy = 0, lx = 0, active = false, horiz = null;
-  const reset = () => { const sh = sheet(); sh.style.transition = ''; sh.style.transform = ''; };
+  const reset = () => { const el = animEl(); if (el) { el.style.transition = ''; el.style.transform = ''; } };
   const finish = () => {
     if (!active) return;
     active = false; reset();
@@ -353,13 +355,18 @@ function setupDaySwipe() {
     if (horiz === null && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) horiz = Math.abs(dx) > Math.abs(dy);
     if (horiz) {
       e.preventDefault();   // 不讓 iOS 把手勢拿去捲動
-      const sh = sheet(); sh.style.transition = 'none'; sh.style.transform = `translateX(${dx * 0.35}px)`;
+      const el = animEl(); if (el) { el.style.transition = 'none'; el.style.transform = `translateX(${dx * 0.35}px)`; }
     }
   }, { passive: false });
   zone.addEventListener('touchend', finish);
   zone.addEventListener('touchcancel', finish);
+}
+function setupDaySwipe() {
+  bindDaySwipe($('#dayZone'), () => document.querySelector('.sheet'));
+  bindDaySwipe($('#dayList'), () => document.querySelector('#dayList .list'));
   $('#dayPrev').addEventListener('click', () => shiftDay(-1));
   $('#dayNext').addEventListener('click', () => shiftDay(1));
+  $('#dayList').addEventListener('click', (e) => { const b = e.target.closest('[data-dn]'); if (b) shiftDay(Number(b.dataset.dn)); });
 }
 
 /* ── 記一筆：當天紀錄 ── */
@@ -377,10 +384,12 @@ function renderDay() {
     : `<span>${md} 還沒有紀錄</span>`;
   $('#daySum').disabled = !items.length;
   const dw = WEEK[new Date(S.date + 'T00:00:00').getDay()];
-  $('#dayList').innerHTML = items.length
-    ? `<div class="day-h"><span>${Number(m)}/${Number(d)}（${dw}）的紀錄</span><span>${exp ? '支出 ' + money(exp) : ''}</span></div>
-       <div class="list">${items.map((t) => rowHTML(t).replace('class="row"', `class="row${t.id === S.editing ? ' editing' : ''}"`)).join('')}</div>`
-    : '';
+  $('#dayList').innerHTML = `<div class="day-h dl-h"><button class="day-nav sm" data-dn="-1" aria-label="前一天">‹</button>
+      <span class="dl-t">${S.date.slice(0, 4) !== today().slice(0, 4) ? S.date.slice(0, 4) + ' ' : ''}${Number(m)}/${Number(d)}（${dw}）${S.date === today() ? '今天' : ''}</span>
+      <span class="dl-s">${exp ? '支出 ' + money(exp) : ''}</span><button class="day-nav sm" data-dn="1" aria-label="下一天">›</button></div>
+    <div class="list">${items.length
+      ? items.map((t) => rowHTML(t).replace('class="row"', `class="row${t.id === S.editing ? ' editing' : ''}"`)).join('')
+      : '<div class="dl-empty">這天沒有紀錄，左右滑可以換天</div>'}</div>`;
 }
 
 function startEdit(id) {

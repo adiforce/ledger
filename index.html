@@ -256,12 +256,16 @@ nav.tabs button.on svg{background:var(--accent-soft)}
 nav.tabs button.dot::after{left:calc(50% + 14px);background:var(--ribbon)}
 .all-cats .root{font-weight:600;color:var(--text)}
 
-#dayZone{touch-action:pan-y;-webkit-user-select:none}
+#dayZone,#dayList{touch-action:pan-y;-webkit-user-select:none}
+.dl-h{align-items:center;gap:8px;margin-left:0;margin-right:0}
+.dl-h .dl-t{flex:1;color:var(--text);font-weight:600}
+.day-nav.sm{width:30px;height:26px;font-size:19px;border-radius:9px}
+.dl-empty{padding:22px 14px;text-align:center;color:var(--sub);font-size:14px}
 @keyframes inL{from{transform:translateX(36px);opacity:.3}to{transform:none;opacity:1}}
 @keyframes inR{from{transform:translateX(-36px);opacity:.3}to{transform:none;opacity:1}}
-.sheet.inL{animation:inL .22s ease-out}
-.sheet.inR{animation:inR .22s ease-out}
-@media (prefers-reduced-motion: reduce){.sheet.inL,.sheet.inR{animation:none}}
+.sheet.inL,.list.inL{animation:inL .22s ease-out}
+.sheet.inR,.list.inR{animation:inR .22s ease-out}
+@media (prefers-reduced-motion: reduce){.inL,.inR{animation:none!important}}
 
 .toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);background:var(--text);color:var(--bg);
   padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;white-space:nowrap}

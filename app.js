@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.5.0';
+const VERSION = '1.6.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -161,6 +161,12 @@ async function loadAll() {
 }
 
 /* ── 記一筆 ── */
+function setNote(v) { const el = $('#note'); el.value = v; fitNote(); }
+function fitNote() {
+  const el = $('#note');
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 2 + 'px';
+}
 function evalExpr(expr) {
   const parts = expr.split('+').filter((p) => p !== '' && p !== '.');
   return Math.round(parts.reduce((s, p) => s + Number(p), 0) * 100) / 100;
@@ -200,7 +206,7 @@ function renderSugs() {
   if (!q) { $('#sugs').innerHTML = ''; return; }
   const out = [];
   for (const [note, e] of S.noteIdx) {
-    if (note !== q && note.includes(q)) out.push([note, e]);
+    if (note !== q && note.length <= 30 && !note.includes('\n') && note.includes(q)) out.push([note, e]);
   }
   out.sort((a, b) => (b[1].count - a[1].count) || (b[1].date > a[1].date ? 1 : -1));
   $('#sugs').innerHTML = out.slice(0, 8).map(([n]) => `<button class="chip" data-note="${esc(n)}">${esc(n)}</button>`).join('');
@@ -214,6 +220,7 @@ function renderAdd() {
   $('[data-k="ok"]').textContent = ed ? '儲存' : (S.date > today() ? '排入預定' : '記帳');
   renderRepeat(ed);
   renderDay();
+  fitNote();
 }
 const REPEAT_LABEL = { '': '不重複', monthly: '每月', yearly: '每年' };
 function renderRepeat(ed) {
@@ -227,7 +234,7 @@ function resetForm(keepDate) {
   S.expr = ''; S.editing = null; S.repeat = '';
   if (!keepDate) S.date = today();
   S.subId = S.freq[S.type][0] ?? null;
-  $('#note').value = '';
+  setNote('');
 }
 function setType(type) {
   if (S.type === type) return;
@@ -323,7 +330,7 @@ function startEdit(id) {
   if (!t) return;
   S.editing = id; S.type = t.type; S.expr = String(t.amount); S.date = t.date; S.subId = t.subcategoryId;
   S.repeat = t.scheduled ? (t.repeat || '') : '';
-  $('#note').value = t.note || '';
+  setNote(t.note || '');
   switchView('v-add');
 }
 async function softDelete(id) {
@@ -1242,12 +1249,11 @@ function bind() {
   };
   $('#freqCats').addEventListener('click', pickCat);
   $('#allCats').addEventListener('click', pickCat);
-  $('#note').addEventListener('input', renderSugs);
-  $('#note').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
+  $('#note').addEventListener('input', () => { fitNote(); renderSugs(); });
   $('#sugs').addEventListener('click', (e) => {
     const b = e.target.closest('[data-note]'); if (!b) return;
     const n = b.dataset.note, info = S.noteIdx.get(n);
-    $('#note').value = n;
+    setNote(n);
     if (info && S.catById.has(info.subcategoryId)) { S.type = info.type; S.subId = info.subcategoryId; }
     $('#note').blur();
     renderAdd();

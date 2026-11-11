@@ -100,7 +100,7 @@ nav.tabs svg{width:22px;height:22px}
 .row .n{font-size:13px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row .a{font-variant-numeric:tabular-nums;font-size:16px}
 .row .a.inc{color:var(--income)}
-.tag{font-size:11px;border:1px solid var(--accent);color:var(--accent);border-radius:6px;padding:0 5px;margin-left:6px;vertical-align:1px}
+.tag{white-space:nowrap;display:inline-block;font-size:11px;border:1px solid var(--accent);color:var(--accent);border-radius:6px;padding:0 5px;margin-left:6px;vertical-align:1px}
 .empty{text-align:center;color:var(--sub);padding:40px 0;font-size:14px}
 .more{display:block;width:100%;padding:12px;color:var(--accent);font-size:14px}
 
@@ -192,6 +192,15 @@ nav.tabs svg{width:22px;height:22px}
 .imp-foot button{display:block;width:100%;max-width:528px;margin:0 auto;background:var(--accent);color:var(--on-accent);border-radius:12px;padding:13px;font-size:16px;font-weight:600}
 .imp-foot button:disabled{opacity:.4}
 
+.pills{display:flex;gap:6px}
+.date-pill select{position:absolute;inset:0;opacity:0;width:100%;font-size:16px}
+.date-pill.rep{color:var(--sub)}
+.date-pill.rep.on{color:var(--accent);border-color:var(--accent)}
+.sr .chip{flex:none}
+.sr .t{cursor:pointer}
+nav.tabs button.dot{position:relative}
+nav.tabs button.dot::after{content:"";position:absolute;top:7px;left:calc(50% + 9px);width:8px;height:8px;border-radius:50%;background:var(--danger)}
+
 .toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);background:var(--text);color:var(--bg);
   padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -215,7 +224,8 @@ nav.tabs svg{width:22px;height:22px}
       </div>
       <div class="top-row">
         <button class="type-toggle" id="typeToggle"></button>
-        <label class="date-pill"><span id="dateLabel"></span><input type="date" id="date"></label>
+        <div class="pills"><label class="date-pill rep" id="repeatPill"><span id="repeatLabel">不重複</span><select id="repeat"><option value="">不重複</option><option value="monthly">每月</option><option value="yearly">每年</option></select></label>
+        <label class="date-pill"><span id="dateLabel"></span><input type="date" id="date"></label></div>
       </div>
       <div class="amount" id="amount"></div>
       <div class="picked" id="picked"></div>
@@ -235,6 +245,7 @@ nav.tabs svg{width:22px;height:22px}
 
     <!-- 明細 -->
     <section class="view" id="v-list">
+      <div class="banner" id="dueBanner" hidden></div>
       <div class="banner" id="backupBanner" hidden></div>
       <input class="search" id="search" type="search" placeholder="搜尋備註或分類（全部年份）">
       <div class="filter-chip" id="filterChip" hidden><span id="filterText"></span><button id="filterClear">✕</button></div>
@@ -281,6 +292,9 @@ nav.tabs svg{width:22px;height:22px}
       </div>
       <p class="note-text">有網路時會自動同步：開啟 App、記帳後幾秒、網路恢復時。資料會寫進你自己的 Google 試算表，換手機時填同一組網址和密鑰就能整份還原。</p>
 
+      <div class="group-h">預定與週期</div>
+      <div class="group"><button class="item accent" id="btnSched">查看全部預定<small id="schedCount"></small></button></div>
+
       <div class="group-h">每月預算</div>
       <div class="group" id="budgetEdit"></div>
       <p class="note-text">留空代表不設。分類預算是大類層級，總預算可以不等於分類加總。</p>
@@ -319,6 +333,13 @@ nav.tabs svg{width:22px;height:22px}
     <div id="impList"></div>
   </div>
   <div class="imp-foot"><button id="impGo">匯入</button></div>
+</div>
+<div class="imp" id="schedView">
+  <div class="imp-head"><h2>預定與週期</h2><button id="schedClose">關閉</button></div>
+  <div class="imp-body">
+    <p class="note-text">到期的按「入帳」就會記進帳裡，有週期的會自動排好下一期。金額不一樣（例如電費）就點那一筆進去改，再按「確認入帳」。要停止重複，點進去把「每月／每年」改成「不重複」。</p>
+    <div id="schedList"></div>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 <div class="mask" id="mask">處理中…</div>

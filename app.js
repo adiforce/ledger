@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -106,7 +106,7 @@ const S = {
   cats: [], catById: new Map(),
   noteIdx: new Map(),  // 備註 -> {count, date, categoryId, subcategoryId, type}
   freq: { expense: [], income: [] },
-  type: 'expense', expr: '', subId: null, date: today(), editing: null,
+  type: 'expense', expr: '', subId: null, date: today(), editing: null, repeat: '', returnTo: null,
   month: today().slice(0, 7), query: '', listLimit: 300, filter: null,
 };
 const live = () => S.tx.filter((t) => !t.deleted);
@@ -145,6 +145,7 @@ function rebuildIndexes() {
     for (const r of roots(type)) for (const s of subsOf(r.id)) if (!list.includes(s.id)) list.push(s.id);
     S.freq[type] = list.slice(0, 8);
   }
+  updateDue();
 }
 
 async function loadAll() {
@@ -210,10 +211,19 @@ function renderAdd() {
   $('#editBar').classList.toggle('on', !!ed);
   $('#btnConfirm').hidden = !(ed && ed.scheduled);
   $('#editBar .grow').textContent = ed?.scheduled ? '編輯預定項目' : '編輯中';
-  $('[data-k="ok"]').textContent = ed ? '儲存' : '記帳';
+  $('[data-k="ok"]').textContent = ed ? '儲存' : (S.date > today() ? '排入預定' : '記帳');
+  renderRepeat(ed);
+}
+const REPEAT_LABEL = { '': '不重複', monthly: '每月', yearly: '每年' };
+function renderRepeat(ed) {
+  const pill = $('#repeatPill');
+  pill.hidden = !!(ed && !ed.scheduled);   // 已入帳的紀錄不能改重複
+  $('#repeat').value = S.repeat;
+  $('#repeatLabel').textContent = S.repeat ? `🔁 ${REPEAT_LABEL[S.repeat]}` : '不重複';
+  pill.classList.toggle('on', !!S.repeat);
 }
 function resetForm(keepDate) {
-  S.expr = ''; S.editing = null;
+  S.expr = ''; S.editing = null; S.repeat = '';
   if (!keepDate) S.date = today();
   S.subId = S.freq[S.type][0] ?? null;
   $('#note').value = '';
@@ -249,27 +259,46 @@ async function save() {
   if (!sub) return toast('請選分類');
   const now = new Date().toISOString();
   const note = $('#note').value.trim();
-  let rec;
+  let rec, msg;
+  const batch = [];
   if (S.editing) {
     rec = S.tx.find((t) => t.id === S.editing);
     Object.assign(rec, { date: S.date, type: S.type, amount, categoryId: sub.parentId, subcategoryId: sub.id, note, updatedAt: now });
+    if (rec.scheduled) { if (S.repeat) rec.repeat = S.repeat; else delete rec.repeat; }
+    batch.push(rec);
+    msg = `已儲存　${catName(sub.id)} ${money(amount)}`;
   } else {
     rec = { id: uid(), date: S.date, type: S.type, amount, categoryId: sub.parentId, subcategoryId: sub.id, note, createdAt: now, updatedAt: now };
-    S.tx.push(rec);
+    batch.push(rec);
+    if (S.date > today()) {             // 未來日期 → 預定
+      rec.scheduled = true;
+      if (S.repeat) rec.repeat = S.repeat;
+      msg = `已排入預定 ${S.date.slice(5).replace('-', '/')}${S.repeat ? `，${REPEAT_LABEL[S.repeat]}重複` : ''}`;
+    } else if (S.repeat) {              // 今天記一筆，順便排好下一期
+      const next = { ...rec, id: uid(), date: addPeriod(S.date, S.repeat), scheduled: true, repeat: S.repeat };
+      batch.push(next);
+      msg = `已記 ${money(amount)}，下一筆排在 ${next.date.slice(5).replace('-', '/')}`;
+    } else msg = `已記　${catName(sub.id)} ${money(amount)}`;
+    S.tx.push(...batch);
   }
-  await putMany('tx', [rec]);
+  await putMany('tx', batch);
   scheduleSync();
   const wasEditing = !!S.editing;
   rebuildIndexes();
   resetForm(!wasEditing);
-  toast(`${wasEditing ? '已儲存' : '已記'}　${catName(sub.id)} ${money(amount)}`);
-  if (wasEditing) { switchView('v-list'); } else renderAdd();
+  toast(msg);
+  if (wasEditing) leaveEdit(); else renderAdd();
+}
+function leaveEdit() {
+  const back = S.returnTo; S.returnTo = null;
+  if (back === 'sched') { switchView('v-list'); openSched(); } else switchView('v-list');
 }
 
 function startEdit(id) {
   const t = S.tx.find((x) => x.id === id);
   if (!t) return;
   S.editing = id; S.type = t.type; S.expr = String(t.amount); S.date = t.date; S.subId = t.subcategoryId;
+  S.repeat = t.scheduled ? (t.repeat || '') : '';
   $('#note').value = t.note || '';
   switchView('v-add');
 }
@@ -282,18 +311,15 @@ async function softDelete(id) {
   rebuildIndexes();
   toast('已刪除');
 }
-async function confirmScheduled() {
-  const t = S.tx.find((x) => x.id === S.editing);
-  if (!t) return;
-  const amount = evalExpr(S.expr);
-  const sub = S.catById.get(S.subId);
-  if (!(amount > 0) || !sub) return toast('金額或分類不正確');
+// 預定 → 入帳；有週期的自動排下一期
+async function confirmRecord(t) {
   const now = new Date().toISOString();
-  Object.assign(t, { date: S.date, type: S.type, amount, categoryId: sub.parentId, subcategoryId: sub.id, note: $('#note').value.trim(), updatedAt: now });
   delete t.scheduled;
+  t.updatedAt = now;
   const batch = [t];
+  let next = null;
   if (t.repeat) {
-    const next = { id: uid(), date: addPeriod(t.date, t.repeat), type: t.type, amount: t.amount, categoryId: t.categoryId,
+    next = { id: uid(), date: addPeriod(t.date, t.repeat), type: t.type, amount: t.amount, categoryId: t.categoryId,
       subcategoryId: t.subcategoryId, note: t.note, scheduled: true, repeat: t.repeat, createdAt: now, updatedAt: now };
     delete t.repeat;
     S.tx.push(next); batch.push(next);
@@ -301,9 +327,77 @@ async function confirmScheduled() {
   await putMany('tx', batch);
   scheduleSync();
   rebuildIndexes();
+  return next;
+}
+async function confirmScheduled() {
+  const t = S.tx.find((x) => x.id === S.editing);
+  if (!t) return;
+  const amount = evalExpr(S.expr);
+  const sub = S.catById.get(S.subId);
+  if (!(amount > 0) || !sub) return toast('金額或分類不正確');
+  Object.assign(t, { date: S.date, type: S.type, amount, categoryId: sub.parentId, subcategoryId: sub.id, note: $('#note').value.trim() });
+  if (S.repeat) t.repeat = S.repeat; else delete t.repeat;
+  const next = await confirmRecord(t);
   resetForm();
-  toast(batch.length > 1 ? `已入帳，下一筆排在 ${batch[1].date}` : '已入帳');
-  switchView('v-list');
+  toast(next ? `已入帳，下一筆排在 ${next.date.slice(5).replace('-', '/')}` : '已入帳');
+  leaveEdit();
+}
+
+/* ── 預定與週期 ── */
+const dueList = () => live().filter((t) => t.scheduled && t.date <= today()).sort((a, b) => (a.date < b.date ? -1 : 1));
+function updateDue() {
+  const n = dueList().length;
+  const b = $('#dueBanner');
+  if (b) {
+    b.hidden = !n;
+    if (n) b.innerHTML = `有 ${n} 筆預定到期了<button id="dueOpen">查看</button>`;
+  }
+  const tab = document.querySelector('#tabs [data-v="v-list"]');
+  if (tab) tab.classList.toggle('dot', n > 0);
+  const c = $('#schedCount');
+  if (c) {
+    const all = live().filter((t) => t.scheduled).length;
+    c.textContent = all ? `${all} 筆${n ? `，${n} 筆到期` : ''}` : '沒有';
+  }
+}
+function schedRowHTML(t, due) {
+  const inc = t.type === 'income';
+  const sub = catName(t.subcategoryId), root = catName(t.categoryId);
+  const [y, m, d] = t.date.split('-');
+  const dateTxt = `${y !== today().slice(0, 4) ? y + '/' : ''}${Number(m)}/${Number(d)}`;
+  return `<div class="ir sr"><div class="t" data-sedit="${esc(t.id)}">
+      <div class="c">${dateTxt}　${esc(root !== sub ? `${root} › ${sub}` : sub)}${t.repeat ? `<span class="tag">${REPEAT_LABEL[t.repeat]}</span>` : ''}</div>
+      ${t.note ? `<div class="n">${esc(t.note)}</div>` : ''}</div>
+    <div class="a${inc ? ' inc' : ''}">${inc ? '+' : ''}${money(t.amount)}</div>
+    ${due ? `<button class="chip" data-sok="${esc(t.id)}">入帳</button>` : ''}</div>`;
+}
+function renderSched() {
+  const all = live().filter((t) => t.scheduled).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const due = all.filter((t) => t.date <= today()), later = all.filter((t) => t.date > today());
+  const sec = (title, list, isDue) => list.length
+    ? `<div class="day-h"><span>${title}</span><span>${list.length} 筆</span></div><div class="list">${list.map((t) => schedRowHTML(t, isDue)).join('')}</div>` : '';
+  $('#schedList').innerHTML = all.length
+    ? sec('已到期，等你確認', due, true) + sec('即將到來', later, false)
+    : '<div class="empty">還沒有預定項目<br>記一筆時選「每月」或「每年」，或把日期選在未來，就會出現在這裡</div>';
+}
+function openSched() { renderSched(); $('#schedView').classList.add('on'); }
+function closeSched() { $('#schedView').classList.remove('on'); }
+function bindSched() {
+  $('#schedClose').addEventListener('click', () => { closeSched(); refreshCurrentView(); });
+  $('#schedList').addEventListener('click', async (e) => {
+    const ok = e.target.closest('[data-sok]');
+    if (ok) {
+      const t = S.tx.find((x) => x.id === ok.dataset.sok); if (!t) return;
+      const next = await confirmRecord(t);
+      toast(next ? `已入帳 ${money(t.amount)}，下一筆排在 ${next.date.slice(5).replace('-', '/')}` : `已入帳 ${money(t.amount)}`);
+      renderSched(); return;
+    }
+    const ed = e.target.closest('[data-sedit]');
+    if (ed) { closeSched(); S.returnTo = 'sched'; startEdit(ed.dataset.sedit); }
+  });
+  document.addEventListener('click', (e) => { if (e.target.id === 'dueOpen') openSched(); });
+  $('#btnSched').addEventListener('click', openSched);
+  $('#repeat').addEventListener('change', (e) => { S.repeat = e.target.value; renderAdd(); });
 }
 
 /* ── 明細 ── */
@@ -1102,7 +1196,7 @@ function switchView(id) {
 function bind() {
   $('#tabs').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.v !== 'v-add' && S.editing) { resetForm(); }
+    if (b.dataset.v !== 'v-add' && S.editing) { resetForm(); S.returnTo = null; }
     if (b.dataset.v === 'v-list') S.filter = null;
     switchView(b.dataset.v);
   });
@@ -1111,7 +1205,7 @@ function bind() {
     keyPress(b.dataset.k || b.textContent);
   });
   $('#typeToggle').addEventListener('click', () => { setType(S.type === 'expense' ? 'income' : 'expense'); renderAdd(); });
-  $('#date').addEventListener('change', (e) => { if (e.target.value) { S.date = e.target.value; renderDate(); } });
+  $('#date').addEventListener('change', (e) => { if (e.target.value) { S.date = e.target.value; renderAdd(); } });
   $('#toggleAll').addEventListener('click', () => {
     const on = $('#allCats').classList.toggle('on');
     $('#toggleAll').textContent = on ? '收合' : '全部分類';
@@ -1134,10 +1228,10 @@ function bind() {
     $('#note').blur();
     renderAdd();
   });
-  $('#btnCancel').addEventListener('click', () => { resetForm(); switchView('v-list'); });
+  $('#btnCancel').addEventListener('click', () => { resetForm(); leaveEdit(); });
   $('#btnDelete').addEventListener('click', async () => {
     if (!confirm('確定刪除這筆？')) return;
-    await softDelete(S.editing); resetForm(); switchView('v-list');
+    await softDelete(S.editing); resetForm(); leaveEdit();
   });
   $('#btnConfirm').addEventListener('click', confirmScheduled);
 
@@ -1151,6 +1245,7 @@ function bind() {
   $('#filterClear').addEventListener('click', () => { S.filter = null; renderList(); });
   bindStats();
   bindImport();
+  bindSched();
   $('#budgetEdit').addEventListener('change', onBudgetInput);
   $('#syncUrl').addEventListener('change', onSyncCfgChange);
   $('#syncKey').addEventListener('change', onSyncCfgChange);

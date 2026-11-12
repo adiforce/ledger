@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.15.0';
+const VERSION = '1.16.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -139,8 +139,10 @@ function rebuildIndexes() {
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 180);
   const cut = ymd(cutoff);
   const freq = { expense: new Map(), income: new Map() };
+  S.byDate = new Map();
   for (const t of S.tx) {
     if (t.deleted) continue;
+    const bd = S.byDate.get(t.date); if (bd) bd.push(t); else S.byDate.set(t.date, [t]);
     if (t.note) {
       const k = t.note;
       const e = S.noteIdx.get(k);
@@ -205,14 +207,47 @@ function renderPicked() {
 function renderTypeToggle() {
   $('#typeToggle').innerHTML = `<span data-t="expense" class="${S.type === 'expense' ? 'on' : ''}">支出</span><span data-t="income" class="${S.type === 'income' ? 'on inc' : ''}">收入</span>`;
 }
+const addDays = (s, n) => { const t = new Date(s + 'T00:00:00'); t.setDate(t.getDate() + n); return ymd(t); };
+function heroInfo(date) {
+  const d = new Date(date + 'T00:00:00'), T = today();
+  const diff = Math.round((new Date(T + 'T00:00:00') - d) / 86400000);
+  return {
+    diff,
+    label: `${date.slice(0, 4) !== T.slice(0, 4) ? d.getFullYear() + '年' : ''}${d.getMonth() + 1}月${d.getDate()}日 週${WEEK[d.getDay()]}`,
+    badge: diff === 0 ? '今天' : diff === 1 ? '昨天' : diff === -1 ? '明天・預定' : diff > 0 ? `${diff} 天前` : `${-diff} 天後・預定`,
+    cls: diff === 0 ? 'today' : diff > 0 ? 'past' : 'future',
+  };
+}
+function dayData(date) {
+  const items = (S.byDate?.get(date) || []).slice()
+    .sort((a, b) => ((b.createdAt || '') > (a.createdAt || '') ? 1 : (b.createdAt || '') < (a.createdAt || '') ? -1 : 0));
+  const real = items.filter((t) => !t.scheduled);
+  return {
+    items, real,
+    exp: real.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
+    inc: real.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+    sch: items.length - real.length,
+    md: date === today() ? '今天' : mdOf(date),
+  };
+}
+const daySumHTML = (dd) => (dd.items.length
+  ? `<span>${dd.md} 已記 <b>${dd.real.length}</b> 筆・支出 <b>${money(dd.exp)}</b>${dd.inc ? `・收入 <b>${money(dd.inc)}</b>` : ''}${dd.sch ? `・預定 ${dd.sch}` : ''}</span>`
+  : `<span>${dd.md} 還沒有紀錄</span>`);
+const dayListHTML = (items) => (items.length
+  ? `<div class="list">${items.map((t) => rowHTML(t).replace('class="row"', `class="row${t.id === S.editing ? ' editing' : ''}"`)).join('')}</div>`
+  : '<div class="di-empty">這天還沒有紀錄</div>');
+function sidePageHTML(date) {
+  const h = heroInfo(date), dd = dayData(date);
+  return `<div class="date-hero ${h.cls}"><span class="dh-pick"><span class="dh-date">${h.label}</span></span><span class="dh-badge">${h.badge}</span>
+    <span class="day-sum">${daySumHTML(dd)}</span></div><div class="day-wrap"><div class="day-inline">${dayListHTML(dd.items)}</div></div>`;
+}
 function renderDate() {
   $('#date').value = S.date;
-  const d = new Date(S.date + 'T00:00:00'), T = today();
-  const diff = Math.round((new Date(T + 'T00:00:00') - d) / 86400000);
-  $('#dateLabel').textContent = `${S.date.slice(0, 4) !== T.slice(0, 4) ? d.getFullYear() + '年' : ''}${d.getMonth() + 1}月${d.getDate()}日 週${WEEK[d.getDay()]}`;
-  $('#dateBadge').textContent = diff === 0 ? '今天' : diff === 1 ? '昨天' : diff === -1 ? '明天・預定' : diff > 0 ? `${diff} 天前` : `${-diff} 天後・預定`;
-  $('#dateHero').className = 'date-hero ' + (diff === 0 ? 'today' : diff > 0 ? 'past' : 'future');
-  $('#dayToday').disabled = diff === 0;
+  const h = heroInfo(S.date);
+  $('#dateLabel').textContent = h.label;
+  $('#dateBadge').textContent = h.badge;
+  $('#dateHero').className = 'date-hero ' + h.cls;
+  $('#dayToday').disabled = h.diff === 0;
 }
 const mdOf = (s) => `${Number(s.slice(5, 7))}/${Number(s.slice(8))}`;
 function chip(id, on, withParent = true) {
@@ -399,11 +434,64 @@ function bindDaySwipe(zone, animEl) {
   zone.addEventListener('touchend', finish);
   zone.addEventListener('touchcancel', finish);
 }
+/* 換天：拖動時整條（前一天｜當天｜後一天）跟著手指走，放手後滑到定位再換資料 */
+const PAGER = { anim: false };
+function pagerSet(px, animate) {
+  const tr = $('#dayTrack'), w = $('#dayPager').clientWidth;
+  tr.style.transition = animate ? 'transform .26s cubic-bezier(.2,.8,.2,1)' : 'none';
+  tr.style.transform = `translateX(${-w + px}px)`;
+}
+function slideDay(d) {
+  if (PAGER.anim) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { shiftDay(d); return; }
+  PAGER.anim = true;
+  const tr = $('#dayTrack'), w = $('#dayPager').clientWidth;
+  let done = false;
+  const commit = () => {
+    if (done) return; done = true;
+    S.date = addDays(S.date, d);
+    tr.style.transition = 'none'; tr.style.transform = '';
+    renderAdd();
+    PAGER.anim = false;
+  };
+  pagerSet(d > 0 ? -w : w, true);
+  tr.addEventListener('transitionend', commit, { once: true });
+  setTimeout(commit, 400);
+}
+function setupDayPager() {
+  const zone = $('#dayPager');
+  let sx = 0, sy = 0, lx = 0, lt = 0, vx = 0, active = false, horiz = null;
+  zone.addEventListener('touchstart', (e) => {
+    active = e.touches.length === 1 && !S.editing && !PAGER.anim;
+    if (!active) return;
+    sx = lx = e.touches[0].clientX; sy = e.touches[0].clientY; lt = e.timeStamp; vx = 0; horiz = null;
+  }, { passive: true });
+  zone.addEventListener('touchmove', (e) => {
+    if (!active) return;
+    const x = e.touches[0].clientX, dx = x - sx, dy = e.touches[0].clientY - sy;
+    if (horiz === null && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) horiz = Math.abs(dx) > Math.abs(dy);
+    if (!horiz) return;
+    e.preventDefault();
+    const dt = Math.max(1, e.timeStamp - lt);
+    vx = (x - lx) / dt; lx = x; lt = e.timeStamp;
+    pagerSet(dx, false);
+  }, { passive: false });
+  const end = () => {
+    if (!active) return;
+    active = false;
+    if (!horiz) return;
+    const dx = lx - sx, w = zone.clientWidth;
+    if (Math.abs(dx) > w * 0.22 || (Math.abs(vx) > 0.45 && Math.abs(dx) > 24)) slideDay(dx < 0 ? 1 : -1);   // 往左 → 下一天
+    else pagerSet(0, true);
+  };
+  zone.addEventListener('touchend', end);
+  zone.addEventListener('touchcancel', end);
+}
 function setupDaySwipe() {
-  bindDaySwipe($('#dayZone'), () => $('#dateHero'));
+  setupDayPager();
   bindDaySwipe($('#dayList'), () => document.querySelector('#dayList .list'));
-  $('#dayPrev').addEventListener('click', () => shiftDay(-1));
-  $('#dayNext').addEventListener('click', () => shiftDay(1));
+  $('#dayPrev').addEventListener('click', () => slideDay(-1));
+  $('#dayNext').addEventListener('click', () => slideDay(1));
   $('#dayToday').addEventListener('click', () => { const t = new Date(S.date + 'T00:00:00'); const diff = Math.round((new Date(today() + 'T00:00:00') - t) / 86400000); if (diff) shiftDay(diff); });
   $('#dayList').addEventListener('click', (e) => { const b = e.target.closest('[data-dn]'); if (b) shiftDay(Number(b.dataset.dn)); });
 }
@@ -418,22 +506,17 @@ function updateMoreHint() {
   if (hidden) hint.textContent = `還有 ${hidden} 筆 ↓`;
 }
 function renderDay() {
-  const items = live().filter((t) => t.date === S.date)
-    .sort((a, b) => ((b.createdAt || '') > (a.createdAt || '') ? 1 : (b.createdAt || '') < (a.createdAt || '') ? -1 : 0));
+  const dd = dayData(S.date), items = dd.items, exp = dd.exp;
   const [, m, d] = S.date.split('-');
-  const md = S.date === today() ? '今天' : `${Number(m)}/${Number(d)}`;
-  const real = items.filter((t) => !t.scheduled);
-  const exp = real.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-  const inc = real.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const sch = items.length - real.length;
-  $('#daySum').innerHTML = items.length
-    ? `<span>${md} 已記 <b>${real.length}</b> 筆・支出 <b>${money(exp)}</b>${inc ? `・收入 <b>${money(inc)}</b>` : ''}${sch ? `・預定 ${sch}` : ''}</span>`
-    : `<span>${md} 還沒有紀錄</span>`;
+  $('#daySum').innerHTML = daySumHTML(dd);
   $('#daySum').disabled = false;
-  $('#dayInline').innerHTML = items.length
-    ? `<div class="list">${items.map((t) => rowHTML(t).replace('class="row"', `class="row${t.id === S.editing ? ' editing' : ''}"`)).join('')}</div>`
-    : '<div class="di-empty">這天還沒有紀錄</div>';
-  requestAnimationFrame(() => { const d = $('#dayInline'); d.style.visibility = d.clientHeight < 34 ? 'hidden' : ''; updateMoreHint(); });
+  $('#dayInline').innerHTML = dayListHTML(items);
+  $('#pagePrev').innerHTML = sidePageHTML(addDays(S.date, -1));
+  $('#pageNext').innerHTML = sidePageHTML(addDays(S.date, 1));
+  requestAnimationFrame(() => {
+    document.querySelectorAll('#dayTrack .day-inline').forEach((el) => { el.style.visibility = el.clientHeight < 34 ? 'hidden' : ''; });
+    updateMoreHint();
+  });
   const dw = WEEK[new Date(S.date + 'T00:00:00').getDay()];
   $('#dayList').innerHTML = `<div class="day-h dl-h"><button class="day-nav sm" data-dn="-1" aria-label="前一天">‹</button>
       <span class="dl-t">${S.date.slice(0, 4) !== today().slice(0, 4) ? S.date.slice(0, 4) + ' ' : ''}${Number(m)}/${Number(d)}（${dw}）${S.date === today() ? '今天' : ''}</span>

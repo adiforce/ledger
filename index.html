@@ -493,6 +493,16 @@ main{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
   .fab-item{left:-4px;top:-4px}
 }
 
+/* ── v1.16 換天：前後一天預先畫好，滑動 1:1 跟手 ── */
+.add-top>.day-pager{flex:1 1 auto;flex-shrink:1;min-height:0}
+.day-pager{display:flex;overflow:hidden;margin:0 -16px;touch-action:pan-y}
+.day-track{display:flex;flex:0 0 100%;min-width:0;transform:translateX(-100%);will-change:transform}
+.day-page{flex:0 0 100%;min-width:0;display:flex;flex-direction:column;padding:0 16px;min-height:0}
+.day-page .date-hero{flex-shrink:0}
+.day-page .day-wrap{flex:1 1 auto;min-height:0}
+.day-page.side .day-sum{pointer-events:none}
+.day-page.side .day-inline{overflow:hidden}
+
 .toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);background:var(--text);color:var(--bg);
   padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -517,12 +527,18 @@ main{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
         </div>
       </div>
       <div class="add-top" id="dayZone">
-        <div class="date-hero" id="dateHero">
-          <label class="dh-pick"><span class="dh-date" id="dateLabel"></span><input type="date" id="date" aria-label="選擇日期"></label>
-          <span class="dh-badge" id="dateBadge"></span>
-          <button class="day-sum" id="daySum"></button>
-        </div>
-        <div class="day-wrap"><div class="day-inline" id="dayInline"></div><button class="more-hint" id="moreHint" hidden></button></div>
+        <div class="day-pager" id="dayPager"><div class="day-track" id="dayTrack">
+          <div class="day-page side" id="pagePrev" aria-hidden="true"></div>
+          <div class="day-page cur">
+            <div class="date-hero" id="dateHero">
+              <label class="dh-pick"><span class="dh-date" id="dateLabel"></span><input type="date" id="date" aria-label="選擇日期"></label>
+              <span class="dh-badge" id="dateBadge"></span>
+              <button class="day-sum" id="daySum"></button>
+            </div>
+            <div class="day-wrap"><div class="day-inline" id="dayInline"></div><button class="more-hint" id="moreHint" hidden></button></div>
+          </div>
+          <div class="day-page side" id="pageNext" aria-hidden="true"></div>
+        </div></div>
         <div class="amt-row">
           <button class="type-toggle" id="typeToggle"></button>
           <label class="pill rep" id="repeatPill"><span id="repeatLabel">不重複</span><select id="repeat"><option value="">不重複</option><option value="monthly">每月</option><option value="yearly">每年</option></select></label>

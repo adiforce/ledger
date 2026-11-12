@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.17.0';
+const VERSION = '1.18.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -1594,6 +1594,7 @@ function bind() {
 
   $('#btnExport').addEventListener('click', exportData);
   $('#btnUpdate').addEventListener('click', () => checkUpdate(true));
+  $('#btnForceUpdate').addEventListener('click', forceUpdate);
   $('#fileImport').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) importData(f); e.target.value = ''; });
   $('#btnWipe').addEventListener('click', async () => {
     if (!confirm('確定清除所有資料？建議先匯出備份。')) return;
@@ -1627,6 +1628,23 @@ async function checkUpdate(manual) {
   const go = () => w.postMessage('skipWaiting');
   if (w.state === 'installed') go();
   else w.addEventListener('statechange', () => { if (w.state === 'installed') go(); });
+}
+// 強制更新：清掉 Service Worker 和程式快取後重新載入（紀錄存在 IndexedDB，不會被動到）
+async function forceUpdate() {
+  if (!confirm('會清除程式快取並重新載入最新版。\n你的紀錄不受影響。確定嗎？')) return;
+  toast('更新中…');
+  try {
+    await Promise.all(['./', 'index.html', 'app.js', 'sw.js'].map((u) => fetch(u, { cache: 'reload' }).catch(() => {})));
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+    if (window.caches) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch {}
+  location.replace(location.pathname + '?r=' + Date.now());
 }
 function setupSW() {
   if (!('serviceWorker' in navigator)) return;

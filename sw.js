@@ -1,9 +1,11 @@
 // 改了任何檔案就把版本號 +1，手機才會抓到新版
-const CACHE = 'ledger-v1.17.0';
+const CACHE = 'ledger-v1.18.0';
 const ASSETS = ['./', './index.html', './app.js', './manifest.webmanifest', './icon-180.png', './icon-512.png', './lib/sql-wasm.js', './lib/sql-wasm.wasm'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
+  // 新版裝好就直接接手（不用等 App 被完全關閉）；cache:'reload' 避免抓到瀏覽器暫存的舊檔
+  self.skipWaiting();
+  e.waitUntil(caches.open(CACHE).then((c) => Promise.all(ASSETS.map((u) => c.add(new Request(u, { cache: 'reload' }))))));
 });
 
 self.addEventListener('activate', (e) => {

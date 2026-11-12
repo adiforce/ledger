@@ -423,6 +423,76 @@ main{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
   .add-bottom .keypad button{height:40px}
 }
 
+/* ── v1.15 ── */
+:root{--edit:#2563eb;--edit-soft:#dbeafe}
+@media (prefers-color-scheme: dark){:root{--edit:#60a5fa;--edit-soft:#172a4a}}
+/* 編輯模式 */
+.edit-bar{display:none;flex-direction:column;align-items:stretch;gap:8px;background:var(--edit-soft);border:2px solid var(--edit);border-radius:16px;padding:10px 12px;margin-bottom:8px;font-size:14px;flex-shrink:0}
+.edit-bar.on{display:flex}
+.eb-top{display:flex;align-items:center;gap:8px}
+.eb-t{flex:1;min-width:0;display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden}
+.eb-t b{color:var(--edit);font-size:15px}
+.eb-t .grow{color:var(--sub);overflow:hidden;text-overflow:ellipsis}
+.eb-x{padding:5px 12px;border-radius:10px;background:var(--card);color:var(--text);font-weight:600}
+.eb-act{display:flex;gap:6px}
+.eb-btn{position:relative;overflow:hidden;flex:1 1 0;min-width:0;text-align:center;padding:8px 6px;border-radius:10px;background:var(--card);color:var(--edit);font-weight:600;white-space:nowrap}
+.eb-btn input{position:absolute;inset:0;opacity:0;width:100%;height:100%;min-width:0;margin:0;border:0;-webkit-appearance:none;appearance:none;font-size:16px}
+.eb-btn.del{color:var(--danger)}
+#v-add.editing .date-hero{border-color:var(--edit);background:var(--edit-soft)}
+#v-add.editing .date-hero .dh-date{color:var(--edit)}
+#v-add.editing .date-hero .dh-badge{background:var(--edit);color:#fff}
+#v-add.editing .keypad .ok{background:var(--edit);border-color:var(--edit);color:#fff;box-shadow:0 3px 10px rgba(37,99,235,.3)}
+/* 當天紀錄填滿＋還有 N 筆 */
+.add-top>*:not(.day-wrap){flex-shrink:0}
+.add-top>.day-wrap{flex-shrink:1}
+.day-wrap{position:relative;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;margin-top:8px}
+.add-top .day-wrap .day-inline{flex:1 1 auto;max-height:none;min-height:0;margin:0;position:relative}
+.more-hint{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);padding:5px 12px;border-radius:999px;background:var(--text);color:var(--bg);font-size:12px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.2);white-space:nowrap}
+/* 備註原地輸入 */
+.note-wrap{position:relative;margin-top:6px}
+textarea.note-box{display:block;width:100%;resize:none;overflow-y:auto;min-height:44px;margin:0;font:inherit;font-size:16px;line-height:1.4;-webkit-user-select:text;user-select:text}
+textarea.note-box:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+textarea.note-box::placeholder{color:var(--sub)}
+.sugs.float{display:none;position:absolute;left:0;right:0;bottom:calc(100% + 6px);gap:6px;overflow-x:auto;padding:2px;z-index:6}
+.note-wrap.focus .sugs.float{display:flex}
+.sugs.float .chip{box-shadow:0 3px 10px rgba(12,45,40,.15);flex:none}
+.sugs.float .chip.done{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:600}
+/* 數字鍵左下留給浮動鈕 */
+.kp-slot{display:block}
+/* 浮動選單（收合 / 扇形展開） */
+body.on-add main{padding-bottom:env(safe-area-inset-bottom)}
+main{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+.fab{position:fixed;z-index:19;width:52px;height:52px;
+  left:calc(16px + (min(100vw, 560px) - 50px) / 8 - 26px);
+  bottom:calc(env(safe-area-inset-bottom) + 10px + (clamp(40px, 5.4vh, 54px) - 52px) / 2)}
+.fab-main{position:absolute;inset:0;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;
+  box-shadow:0 8px 20px rgba(12,80,72,.35);transition:transform .2s}
+.fab-main svg{width:24px;height:24px;transition:transform .25s}
+.fab.open .fab-main svg{transform:rotate(45deg)}
+.fab-main.dot::after{content:"";position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:var(--ribbon);border:2px solid var(--bg)}
+.fab-item{position:absolute;left:2px;top:2px;width:48px;height:48px;border-radius:50%;background:var(--card);color:var(--text);border:1px solid var(--line);
+  display:grid;place-items:center;box-shadow:0 6px 16px rgba(12,45,40,.2);opacity:0;pointer-events:none;transform:translate(0,0) scale(.3);
+  transition:transform .28s cubic-bezier(.2,.9,.3,1.25),opacity .2s;transition-delay:calc(var(--i) * 25ms)}
+.fab-item svg{width:22px;height:22px}
+.fab-item span{position:absolute;top:calc(100% + 3px);left:50%;transform:translateX(-50%);font-size:11px;font-weight:600;white-space:nowrap;color:var(--text);
+  background:var(--card);padding:1px 6px;border-radius:6px}
+.fab-item.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.fab-item.dot::after{content:"";position:absolute;top:0;right:0;width:10px;height:10px;border-radius:50%;background:var(--ribbon)}
+.fab.open .fab-item{opacity:1;pointer-events:auto}
+.fab.open .fab-item[style*="--i:0"]{transform:translate(0,-172px)}
+.fab.open .fab-item[style*="--i:1"]{transform:translate(78px,-152px)}
+.fab.open .fab-item[style*="--i:2"]{transform:translate(134px,-98px)}
+.fab.open .fab-item[style*="--i:3"]{transform:translate(156px,-26px)}
+.fab-bg{position:fixed;inset:0;z-index:18;background:rgba(10,20,18,.35);opacity:0;pointer-events:none;transition:opacity .2s}
+.fab-bg.on{opacity:1;pointer-events:auto}
+.imp{z-index:22}
+@media (prefers-reduced-motion: reduce){.fab-item,.fab-bg,.fab-main svg{transition:none}}
+@media (max-height: 720px){
+  .fab{width:40px;height:40px;left:calc(16px + (min(100vw, 560px) - 50px) / 8 - 20px);bottom:calc(env(safe-area-inset-bottom) + 6px)}
+  .fab-main svg{width:20px;height:20px}
+  .fab-item{left:-4px;top:-4px}
+}
+
 .toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);background:var(--text);color:var(--bg);
   padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -432,17 +502,19 @@ main{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
 .mask.on{display:flex}
 </style>
 </head>
-<body>
+<body class="on-add">
 <div class="app">
   <div class="update" id="updateBar">有新版本，點這裡更新</div>
   <main>
     <!-- 記一筆 -->
     <section class="view on" id="v-add">
       <div class="edit-bar" id="editBar">
-        <span class="grow">編輯中</span>
-        <button id="btnConfirm" hidden>確認入帳</button>
-        <button class="del" id="btnDelete">刪除</button>
-        <button id="btnCancel">取消</button>
+        <div class="eb-top"><span class="eb-t">✏️ <b id="editTitle">正在編輯</b><span class="grow" id="editSub"></span></span><button class="eb-x" id="btnCancel">取消</button></div>
+        <div class="eb-act">
+          <label class="eb-btn">📅 改日期<input type="date" id="editDate" aria-label="改日期"></label>
+          <button class="eb-btn" id="btnConfirm" hidden>✅ 確認入帳</button>
+          <button class="eb-btn del" id="btnDelete">🗑 刪除</button>
+        </div>
       </div>
       <div class="add-top" id="dayZone">
         <div class="date-hero" id="dateHero">
@@ -450,13 +522,13 @@ main{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
           <span class="dh-badge" id="dateBadge"></span>
           <button class="day-sum" id="daySum"></button>
         </div>
-        <div class="day-inline" id="dayInline"></div>
+        <div class="day-wrap"><div class="day-inline" id="dayInline"></div><button class="more-hint" id="moreHint" hidden></button></div>
         <div class="amt-row">
           <button class="type-toggle" id="typeToggle"></button>
           <label class="pill rep" id="repeatPill"><span id="repeatLabel">不重複</span><select id="repeat"><option value="">不重複</option><option value="monthly">每月</option><option value="yearly">每年</option></select></label>
           <div class="amount" id="amount"></div>
         </div>
-        <div class="note-box" id="notePrev" role="button" tabindex="0"></div>
+        <div class="note-wrap" id="noteWrap"><div class="sugs float" id="sugs"></div><textarea class="note-box" id="note" rows="1" placeholder="✎ 點這裡寫備註（可換行）" autocomplete="off"></textarea></div>
         <div class="budget-line" id="budgetLine"></div>
       </div>
       <div class="add-bottom">
@@ -466,7 +538,7 @@ main{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
           <button>7</button><button>8</button><button>9</button><button class="op" data-k="back">⌫</button>
           <button>4</button><button>5</button><button>6</button><button class="op" data-k="+">＋</button>
           <button>1</button><button>2</button><button>3</button><button class="op" data-k="clear">C</button>
-          <button>00</button><button>0</button><button>.</button><button class="ok" data-k="ok">記帳</button>
+          <span class="kp-slot" aria-hidden="true"></span><button>0</button><button>.</button><button class="ok" data-k="ok">記帳</button>
         </div>
       </div>
     </section>
@@ -541,11 +613,12 @@ main{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
     </section>
   </main>
 
-  <nav class="tabs" id="tabs">
-    <button class="on" data-v="v-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>記一筆</button>
-    <button data-v="v-list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>明細</button>
-    <button data-v="v-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>統計</button>
-    <button data-v="v-set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>設定</button>
+  <nav class="fab" id="tabs" aria-label="主選單">
+    <button class="fab-main" id="fabMain" aria-label="開啟選單" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="7" cy="7" r="1.6"/><circle cx="17" cy="7" r="1.6"/><circle cx="7" cy="17" r="1.6"/><circle cx="17" cy="17" r="1.6"/></svg></button>
+    <button class="fab-item on" data-v="v-add" style="--i:0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span>記一筆</span></button>
+    <button class="fab-item" data-v="v-list" style="--i:1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg><span>明細</span></button>
+    <button class="fab-item" data-v="v-stat" style="--i:2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg><span>統計</span></button>
+    <button class="fab-item" data-v="v-set" style="--i:3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>設定</span></button>
   </nav>
 </div>
 <div class="imp" id="impView">
@@ -569,11 +642,10 @@ main{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
     <div id="schedList"></div>
   </div>
 </div>
+<div class="fab-bg" id="fabBg"></div>
 <div class="drawer-bg" id="drawerBg"></div>
 <div class="drawer" id="catDrawer" role="dialog" aria-label="全部分類"><div class="drawer-h"><b>全部分類</b><button data-close>完成</button></div><div class="drawer-b" id="allCats"></div></div>
 <div class="drawer" id="dayDrawer" role="dialog" aria-label="當天紀錄"><div class="drawer-h"><b>當天紀錄</b><button data-close>關閉</button></div><div class="drawer-b" id="dayList"></div></div>
-<div class="drawer top" id="noteDrawer" role="dialog" aria-label="備註"><div class="drawer-h"><b>備註</b><button data-close>完成</button></div>
-  <div class="drawer-b"><textarea class="note" id="note" rows="3" placeholder="例：午餐 美麗華（可換行）" autocomplete="off"></textarea><div class="sugs" id="sugs"></div></div></div>
 <div class="toast" id="toast"></div>
 <div class="mask" id="mask">處理中…</div>
 <script src="app.js"></script>

@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.14.0';
+const VERSION = '1.15.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -180,8 +180,9 @@ async function loadAll() {
 function setNote(v) { const el = $('#note'); el.value = v; fitNote(); }
 function fitNote() {
   const el = $('#note');
+  const lh = 22.4, pad = 24, lines = document.activeElement === el ? 5 : 2;
   el.style.height = 'auto';
-  el.style.height = el.scrollHeight + 2 + 'px';
+  el.style.height = Math.min(el.scrollHeight + 2, lines * lh + pad) + 'px';
 }
 function evalExpr(expr) {
   const parts = expr.split('+').filter((p) => p !== '' && p !== '.');
@@ -242,41 +243,40 @@ function renderCats() {
 }
 function renderSugs() {
   const q = $('#note').value.trim();
-  if (!q) { $('#sugs').innerHTML = ''; return; }
+  const done = '<button class="chip done" data-done>完成</button>';
+  if (!q) { $('#sugs').innerHTML = done; return; }
   const out = [];
   for (const [note, e] of S.noteIdx) {
     if (note !== q && note.length <= 30 && !note.includes('\n') && note.includes(q)) out.push([note, e]);
   }
   out.sort((a, b) => (b[1].count - a[1].count) || (b[1].date > a[1].date ? 1 : -1));
-  $('#sugs').innerHTML = out.slice(0, 8).map(([n]) => `<button class="chip" data-note="${esc(n)}">${esc(n)}</button>`).join('');
+  $('#sugs').innerHTML = done + out.slice(0, 8).map(([n]) => `<button class="chip" data-note="${esc(n)}">${esc(n)}</button>`).join('');
 }
 function renderAdd() {
   renderTypeToggle(); renderDate(); renderAmount(); renderPicked(); renderCats(); renderSugs(); renderBudgetLine();
   const ed = S.editing && S.tx.find((t) => t.id === S.editing);
   $('#editBar').classList.toggle('on', !!ed);
+  $('#v-add').classList.toggle('editing', !!ed);
   $('#btnConfirm').hidden = !(ed && ed.scheduled);
-  $('#editBar .grow').textContent = ed?.scheduled ? '編輯預定項目' : '編輯中';
-  $('[data-k="ok"]').innerHTML = ed ? '儲存' : (S.date > today() ? `排入<br>${mdOf(S.date)}` : `記到<br>${mdOf(S.date)}`);
+  if (ed) {
+    $('#editTitle').textContent = ed.scheduled ? '正在編輯預定' : '正在編輯';
+    $('#editSub').textContent = `原本：${mdOf(ed.date)} ${catName(ed.subcategoryId)} ${money(ed.amount)}`;
+    $('#editDate').value = S.date;
+  }
+  $('[data-k="ok"]').innerHTML = ed ? `儲存修改<br>${mdOf(S.date)}` : (S.date > today() ? `排入<br>${mdOf(S.date)}` : `記到<br>${mdOf(S.date)}`);
   renderRepeat(ed);
   renderDay();
   renderNotePrev();
 }
-function renderNotePrev() {
-  const v = $('#note').value.trim();
-  $('#notePrev').textContent = v;
-
-}
+function renderNotePrev() { fitNote(); }
 /* ── 抽屜 ── */
 function openDrawer(id) {
   closeDrawers();
   $('#' + id).classList.add('on'); $('#drawerBg').classList.add('on');
-  if (id === 'noteDrawer') setTimeout(() => { const n = $('#note'); n.focus(); fitNote(); n.setSelectionRange(n.value.length, n.value.length); }, 60);
 }
 function closeDrawers() {
-  const wasNote = $('#noteDrawer').classList.contains('on');
   document.querySelectorAll('.drawer.on').forEach((d) => d.classList.remove('on'));
   $('#drawerBg').classList.remove('on');
-  if (wasNote) { $('#note').blur(); renderNotePrev(); }
 }
 const REPEAT_LABEL = { '': '不重複', monthly: '每月', yearly: '每年' };
 function renderRepeat(ed) {
@@ -409,6 +409,14 @@ function setupDaySwipe() {
 }
 
 /* ── 記一筆：當天紀錄 ── */
+function updateMoreHint() {
+  const d = $('#dayInline'), hint = $('#moreHint');
+  if (d.style.visibility === 'hidden') { hint.hidden = true; return; }
+  const bottom = d.scrollTop + d.clientHeight;
+  const hidden = [...d.querySelectorAll('.rw')].filter((r) => r.offsetTop + r.offsetHeight / 2 > bottom).length;
+  hint.hidden = !hidden;
+  if (hidden) hint.textContent = `還有 ${hidden} 筆 ↓`;
+}
 function renderDay() {
   const items = live().filter((t) => t.date === S.date)
     .sort((a, b) => ((b.createdAt || '') > (a.createdAt || '') ? 1 : (b.createdAt || '') < (a.createdAt || '') ? -1 : 0));
@@ -425,7 +433,7 @@ function renderDay() {
   $('#dayInline').innerHTML = items.length
     ? `<div class="list">${items.map((t) => rowHTML(t).replace('class="row"', `class="row${t.id === S.editing ? ' editing' : ''}"`)).join('')}</div>`
     : '<div class="di-empty">這天還沒有紀錄</div>';
-  requestAnimationFrame(() => { const d = $('#dayInline'); d.style.visibility = d.clientHeight < 34 ? 'hidden' : ''; });
+  requestAnimationFrame(() => { const d = $('#dayInline'); d.style.visibility = d.clientHeight < 34 ? 'hidden' : ''; updateMoreHint(); });
   const dw = WEEK[new Date(S.date + 'T00:00:00').getDay()];
   $('#dayList').innerHTML = `<div class="day-h dl-h"><button class="day-nav sm" data-dn="-1" aria-label="前一天">‹</button>
       <span class="dl-t">${S.date.slice(0, 4) !== today().slice(0, 4) ? S.date.slice(0, 4) + ' ' : ''}${Number(m)}/${Number(d)}（${dw}）${S.date === today() ? '今天' : ''}</span>
@@ -495,6 +503,7 @@ function updateDue() {
   }
   const tab = document.querySelector('#tabs [data-v="v-list"]');
   if (tab) tab.classList.toggle('dot', n > 0);
+  $('#fabMain')?.classList.toggle('dot', n > 0);
   const c = $('#schedCount');
   if (c) {
     const all = live().filter((t) => t.scheduled).length;
@@ -1339,11 +1348,20 @@ async function onSyncCfgChange() {
   renderSyncEdit();
 }
 
+/* ── 浮動選單 ── */
+function setFab(open) {
+  $('#tabs').classList.toggle('open', open);
+  $('#fabBg').classList.toggle('on', open);
+  $('#fabMain').setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
 /* ── 分頁切換 ── */
 function switchView(id) {
   closeDrawers();
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('on', v.id === id));
-  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.v === id));
+  document.querySelectorAll('#tabs .fab-item').forEach((b) => b.classList.toggle('on', b.dataset.v === id));
+  document.body.classList.toggle('on-add', id === 'v-add');
+  setFab(false);
   $('main').scrollTop = 0;
   if (id === 'v-add') renderAdd();
   if (id === 'v-list') { S.listLimit = 300; renderList(); }
@@ -1353,8 +1371,10 @@ function switchView(id) {
 
 /* ── 事件 ── */
 function bind() {
+  $('#fabMain').addEventListener('click', () => setFab(!$('#tabs').classList.contains('open')));
+  $('#fabBg').addEventListener('click', () => setFab(false));
   $('#tabs').addEventListener('click', (e) => {
-    const b = e.target.closest('button'); if (!b) return;
+    const b = e.target.closest('.fab-item'); if (!b) return;
     if (b.dataset.v !== 'v-add' && S.editing) { resetForm(); S.returnTo = null; }
     if (b.dataset.v === 'v-list') S.filter = null;
     switchView(b.dataset.v);
@@ -1377,16 +1397,22 @@ function bind() {
   };
   $('#freqCats').addEventListener('click', pickCat);
   $('#allCats').addEventListener('click', pickCat);
-  $('#notePrev').addEventListener('click', () => openDrawer('noteDrawer'));
   $('#drawerBg').addEventListener('click', closeDrawers);
   document.querySelectorAll('.drawer [data-close]').forEach((b) => b.addEventListener('click', closeDrawers));
-  $('#note').addEventListener('input', () => { fitNote(); renderSugs(); renderNotePrev(); });
+  $('#note').addEventListener('input', () => { fitNote(); renderSugs(); });
+  $('#note').addEventListener('focus', () => { $('#noteWrap').classList.add('focus'); renderSugs(); fitNote(); });
+  $('#note').addEventListener('blur', () => { $('#noteWrap').classList.remove('focus'); fitNote(); });
+  $('#sugs').addEventListener('pointerdown', (e) => { if (e.target.closest('button')) e.preventDefault(); });   // 點建議時不要先失焦
+  $('#dayInline').addEventListener('scroll', updateMoreHint, { passive: true });
+  $('#moreHint').addEventListener('click', () => { const d = $('#dayInline'); const t = d.scrollTop + d.clientHeight * 0.8; try { d.scrollTo({ top: t, behavior: 'smooth' }); } catch { d.scrollTop = t; } });
+  $('#editDate').addEventListener('change', (e) => { if (e.target.value) { S.date = e.target.value; renderAdd(); } });
   $('#sugs').addEventListener('click', (e) => {
+    if (e.target.closest('[data-done]')) { $('#note').blur(); return; }
     const b = e.target.closest('[data-note]'); if (!b) return;
     const n = b.dataset.note, info = S.noteIdx.get(n);
     setNote(n);
     if (info && S.catById.has(info.subcategoryId)) { S.type = info.type; S.subId = info.subcategoryId; }
-    closeDrawers();
+    $('#note').blur();
     renderAdd();
   });
   $('#btnCancel').addEventListener('click', () => { resetForm(); leaveEdit(); });

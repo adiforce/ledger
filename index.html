@@ -493,6 +493,9 @@ main{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
   .fab-item{left:-4px;top:-4px}
 }
 
+/* v1.16.1：摘要只顯示，不再拉出清單 */
+.add-top .day-sum::after,.add-top .date-hero .day-sum::after{content:none}
+.date-hero .day-sum{pointer-events:none}
 /* ── v1.16 換天：前後一天預先畫好，滑動 1:1 跟手 ── */
 .add-top>.day-pager{flex:1 1 auto;flex-shrink:1;min-height:0}
 .day-pager{display:flex;overflow:hidden;margin:0 -16px;touch-action:pan-y}

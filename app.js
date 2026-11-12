@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.16.0';
+const VERSION = '1.16.1';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -1505,7 +1505,6 @@ function bind() {
   });
   $('#btnConfirm').addEventListener('click', confirmScheduled);
   setupDaySwipe();
-  $('#daySum').addEventListener('click', () => openDrawer('dayDrawer'));
   $('#dayInline').addEventListener('click', (e) => {
     const r = e.target.closest('.row'); if (!r || r.dataset.id === S.editing) return;
     if (!S.editing) { S.returnTo = 'add'; S.returnDate = S.date; }

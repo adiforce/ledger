@@ -506,6 +506,14 @@ main{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
 .day-page.side .day-sum{pointer-events:none}
 .day-page.side .day-inline{overflow:hidden}
 
+/* v1.17 小類搬移 */
+.sa-btn{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:8px;font-size:16px}
+.mv-list{display:flex;flex-direction:column;gap:8px}
+.mv-root{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:color-mix(in srgb,var(--h) 14%,var(--card));font-size:16px;text-align:left}
+.mv-root b{flex:1}
+.mv-root small{color:var(--sub);font-size:12px}
+.mv-root.cur{opacity:.5}
+
 .toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);background:var(--text);color:var(--bg);
   padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -622,7 +630,7 @@ main{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
       <div class="group" id="catEditExp"></div>
       <div class="group-h">收入分類</div>
       <div class="group" id="catEditInc"></div>
-      <p class="note-text">點小類可以改名，點「＋」新增。分類改名不影響舊紀錄。</p>
+      <p class="note-text">點小類可以改名或搬到其他大類（舊紀錄會一起搬），點「＋」新增。</p>
 
       <div class="group-h">其他</div>
       <div class="group">
@@ -663,6 +671,7 @@ main{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
 </div>
 <div class="fab-bg" id="fabBg"></div>
 <div class="drawer-bg" id="drawerBg"></div>
+<div class="drawer" id="catActDrawer" role="dialog" aria-label="分類設定"><div class="drawer-h"><b id="catActTitle"></b><button data-close>取消</button></div><div class="drawer-b" id="catActBody"></div></div>
 <div class="drawer" id="catDrawer" role="dialog" aria-label="全部分類"><div class="drawer-h"><b>全部分類</b><button data-close>完成</button></div><div class="drawer-b" id="allCats"></div></div>
 <div class="drawer" id="dayDrawer" role="dialog" aria-label="當天紀錄"><div class="drawer-h"><b>當天紀錄</b><button data-close>關閉</button></div><div class="drawer-b" id="dayList"></div></div>
 <div class="toast" id="toast"></div>

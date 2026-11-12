@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.16.1';
+const VERSION = '1.17.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -761,7 +761,7 @@ async function renderSettings() {
   $('#installHint').hidden = standalone;
   for (const [type, el] of [['expense', '#catEditExp'], ['income', '#catEditInc']]) {
     $(el).innerHTML = roots(type).map((r) => `<div class="cat-edit"><div class="root-name"><span>${esc(r.name)}</span><button data-rename="${esc(r.id)}">改名</button></div>
-      <div class="cat-grid">${subsOf(r.id).map((s) => `<button class="chip" data-rename="${esc(s.id)}">${esc(s.name)}</button>`).join('')}
+      <div class="cat-grid">${subsOf(r.id).map((s) => `<button class="chip" data-subact="${esc(s.id)}">${esc(s.name)}</button>`).join('')}
       <button class="chip" data-addsub="${esc(r.id)}">＋</button></div></div>`).join('') +
       `<button class="item accent" data-addroot="${type}">＋ 新增大類</button>`;
   }
@@ -942,6 +942,7 @@ function openImport(parsed, ignored) {
   IMP.parsed = parsed;
   IMP.ignored = ignored;
   IMP.all = parsed.tx.filter((t) => !have.has(t.id) && !t.deleted).sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? 1 : -1));
+  for (const t of IMP.all) { const sc = S.catById.get(t.subcategoryId); if (sc?.parentId) t.categoryId = sc.parentId; }   // 小類搬過家，跟著現在的大類
   IMP.existing = parsed.tx.length - IMP.all.length;
   IMP.dup = new Set(IMP.all.filter((t) => existingKeys.has(keyOf(t))).map((t) => t.id));
   IMP.sel = new Set(IMP.all.filter((t) => !IMP.dup.has(t.id) && !ignored.has(t.id)).map((t) => t.id));
@@ -1041,8 +1042,9 @@ function bindImport() {
 }
 
 async function catAction(e) {
-  const t = e.target.closest('[data-rename],[data-addsub],[data-addroot]');
+  const t = e.target.closest('[data-rename],[data-addsub],[data-addroot],[data-subact]');
   if (!t) return;
+  if (t.dataset.subact) { openSubAction(t.dataset.subact); return; }
   if (t.dataset.rename) {
     const c = S.catById.get(t.dataset.rename);
     const name = prompt('改名', c.name)?.trim();
@@ -1063,6 +1065,63 @@ async function catAction(e) {
     S.cats.push(r, s); await putMany('categories', [r, s]);
   }
   indexCats(); rebuildIndexes(); renderSettings(); scheduleSync();
+}
+
+/* ── 小類：改名／搬到其他大類 ── */
+function openSubAction(id) {
+  const c = S.catById.get(id); if (!c) return;
+  const n = S.tx.filter((t) => t.subcategoryId === id && !t.deleted).length;
+  $('#catActTitle').textContent = `${catLook(c.parentId)[0]} ${catName(c.parentId)} › ${c.name}`;
+  $('#catActBody').innerHTML = `<p class="note-text">這個小類有 ${n.toLocaleString()} 筆紀錄。</p>
+    <button class="item accent sa-btn" data-sa="rename">✏️ 改名</button>
+    <button class="item accent sa-btn" data-sa="move">↪︎ 搬到其他大類</button>`;
+  $('#catActBody').dataset.id = id;
+  openDrawer('catActDrawer');
+}
+function showMoveTargets(id) {
+  const c = S.catById.get(id);
+  $('#catActBody').innerHTML = `<p class="note-text">選擇要搬到哪個大類（只能在${c.type === 'income' ? '收入' : '支出'}裡搬）：</p>
+    <div class="mv-list">${roots(c.type).map((r) => {
+      const [e, h] = catLook(r.id), cur = r.id === c.parentId;
+      return `<button class="mv-root${cur ? ' cur' : ''}" style="--h:${h}" data-to="${esc(r.id)}"${cur ? ' disabled' : ''}><span class="cs-e">${e}</span><b>${esc(r.name)}</b>${cur ? '<small>目前所在</small>' : ''}</button>`;
+    }).join('')}</div>`;
+}
+async function moveSub(id, toRoot) {
+  const c = S.catById.get(id), from = c.parentId;
+  if (!c || from === toRoot) return;
+  const affected = S.tx.filter((t) => t.subcategoryId === id);
+  const n = affected.filter((t) => !t.deleted).length;
+  if (!confirm(`把「${c.name}」從「${catName(from)}」搬到「${catName(toRoot)}」，\n會一起改 ${n.toLocaleString()} 筆紀錄。確定嗎？`)) return;
+  busy(true);
+  try {
+    const now = new Date().toISOString();
+    c.parentId = toRoot;
+    c.order = subsOf(toRoot).filter((s) => s.id !== id).length;
+    await putMany('categories', [c]);
+    for (const t of affected) { t.categoryId = toRoot; t.updatedAt = now; }
+    if (affected.length) await putMany('tx', affected);
+    indexCats(); rebuildIndexes();
+    closeDrawers(); renderSettings(); scheduleSync(2000);
+    toast(`已搬到「${catName(toRoot)}」，更新 ${n.toLocaleString()} 筆`);
+  } catch (err) {
+    toast('搬移失敗：' + err.message);
+  } finally { busy(false); }
+}
+async function onSubAction(e) {
+  const id = $('#catActBody').dataset.id;
+  const a = e.target.closest('[data-sa]');
+  if (a?.dataset.sa === 'move') { showMoveTargets(id); return; }
+  if (a?.dataset.sa === 'rename') {
+    const c = S.catById.get(id);
+    closeDrawers();
+    const name = prompt('改名', c.name)?.trim();
+    if (!name || name === c.name) return;
+    c.name = name; await putMany('categories', [c]);
+    indexCats(); rebuildIndexes(); renderSettings(); scheduleSync();
+    return;
+  }
+  const to = e.target.closest('[data-to]');
+  if (to && !to.disabled) moveSub(id, to.dataset.to);
 }
 
 /* ── 預算 ── */
@@ -1543,6 +1602,7 @@ function bind() {
   });
   $('#catEditExp').addEventListener('click', catAction);
   $('#catEditInc').addEventListener('click', catAction);
+  $('#catActBody').addEventListener('click', onSubAction);
 }
 function shiftMonth(d) {
   const [y, m] = S.month.split('-').map(Number);

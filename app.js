@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.18.0';
+const VERSION = '1.18.1';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -1548,15 +1548,28 @@ function bind() {
   $('#dayInline').addEventListener('scroll', updateMoreHint, { passive: true });
   $('#moreHint').addEventListener('click', () => { const d = $('#dayInline'); const t = d.scrollTop + d.clientHeight * 0.8; try { d.scrollTo({ top: t, behavior: 'smooth' }); } catch { d.scrollTop = t; } });
   $('#editDate').addEventListener('change', (e) => { if (e.target.value) { S.date = e.target.value; renderAdd(); } });
-  $('#sugs').addEventListener('click', (e) => {
-    if (e.target.closest('[data-done]')) { $('#note').blur(); return; }
-    const b = e.target.closest('[data-note]'); if (!b) return;
+  // 點建議：iOS 會在 click 之前先讓備註框失焦、建議列跟著隱藏，click 就落空，
+  // 所以手機改在 touchend 直接處理（並 preventDefault 擋掉後續的失焦與 click），滑動捲動則不算點擊
+  const pickSug = (target) => {
+    if (target.closest('[data-done]')) { $('#note').blur(); return; }
+    const b = target.closest('[data-note]'); if (!b) return;
     const n = b.dataset.note, info = S.noteIdx.get(n);
     setNote(n);
     if (info && S.catById.has(info.subcategoryId)) { S.type = info.type; S.subId = info.subcategoryId; }
     $('#note').blur();
     renderAdd();
-  });
+  };
+  let sugTouch = null, sugTouchAt = 0;
+  $('#sugs').addEventListener('touchstart', (e) => { const t = e.touches[0]; sugTouch = { x: t.clientX, y: t.clientY }; }, { passive: true });
+  $('#sugs').addEventListener('touchend', (e) => {
+    const st = sugTouch; sugTouch = null;
+    if (!st || !e.target.closest('button')) return;
+    const t = e.changedTouches[0];
+    if (Math.abs(t.clientX - st.x) + Math.abs(t.clientY - st.y) > 10) return;
+    e.preventDefault(); sugTouchAt = Date.now();
+    pickSug(e.target);
+  }, { passive: false });
+  $('#sugs').addEventListener('click', (e) => { if (Date.now() - sugTouchAt > 700) pickSug(e.target); });
   $('#btnCancel').addEventListener('click', () => { resetForm(); leaveEdit(); });
   $('#btnDelete').addEventListener('click', async () => {
     if (!confirm('確定刪除這筆？')) return;

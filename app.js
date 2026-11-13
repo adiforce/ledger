@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.18.1';
+const VERSION = '1.18.2';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {

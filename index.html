@@ -514,6 +514,10 @@ main{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
 .mv-root small{color:var(--sub);font-size:12px}
 .mv-root.cur{opacity:.5}
 
+/* v1.18.2：整頁不能上下拉（iOS 橡皮筋回彈）；記一筆頁面本身不捲動，只有當天清單可在框內捲 */
+html,body,main{overscroll-behavior:none}
+body.on-add main{overflow-y:hidden}
+.day-inline,.imp-body,.drawer-b{overscroll-behavior-y:none}
 .toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);background:var(--text);color:var(--bg);
   padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}

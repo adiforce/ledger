@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.18.2';
+const VERSION = '1.19.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -30,20 +30,129 @@ function defaultCategories() {
   return out;
 }
 
-/* ── 分類圖示：用預設大類的 ID 對應 emoji 與色調 ── */
+/* ── 手繪風圖示：先錯位塗一層色塊（像蠟筆沒對準），再用歪歪的墨線描 ── */
+const HD = {
+  // f: 上色的色塊、k: 墨線、c: 額外點綴色（腮紅等）
+  bowl: { f: 'M3.5 11.6Q4 18.4 12 18.9Q20 18.5 20.5 11.4Z', k: ['M2.9 11.5Q12 12.2 21.1 11.2', 'M3.4 11.7Q4.2 18.7 12 19.1Q19.8 18.8 20.7 11.4', 'M9 19.3Q12 20.7 15.3 19.1', 'M8.6 9q-1.1-1.6 0-3.1q1-1.4-.1-2.9', 'M12.4 8.8q-1-1.4.1-2.8', 'M14.2 10.5L21.6 4.1', 'M16.3 11L22.1 6.6'] },
+  car: { f: 'M3 15.2Q3 11.6 6 11.3L8 7.7Q9 6.5 12 6.6Q15.4 6.5 16.6 7.8L18.6 11.3Q21.2 11.7 21 15.2L21 16.8L3 16.9Z', k: ['M3.1 16.7L2.9 14.9Q3.1 11.7 6.1 11.2L8.1 7.6Q9.2 6.4 12.2 6.5Q15.6 6.4 16.7 7.9L18.7 11.2Q21.3 11.8 21.1 15L21 16.8', 'M9.7 16.9L14.6 16.8', 'M8.4 11L9.5 8.6Q12 8.1 14.9 8.7L16 11', 'M12 8.4L12.1 11.1'], o: [[7.4, 17.2, 2], [16.8, 17.1, 2]] },
+  house: { f: 'M5 11L5 20L19 20L19 11L12 4.6Z', k: ['M2.8 12.3L12.1 3.8L21.3 12.1', 'M5.2 10.6Q4.9 15.2 5.1 20.1Q12 20.5 18.9 19.9Q19.2 15 18.8 10.4', 'M10 20L10 15.2Q12 14.4 14.1 15.1L14 20', 'M15.9 6.9L15.9 4.1L18.1 4L18.1 8.7'] },
+  bulb: { f: 'M12 3Q18.2 3.2 18 9.4Q17.8 12.4 15.2 14.4L15 16.4L9 16.4L8.8 14.4Q6.2 12.4 6 9.4Q6 3.2 12 3Z', k: ['M9 16.5L8.9 14.5Q6 12.5 5.9 9.3Q6 3.1 12.1 2.9Q18.3 3.1 18.1 9.5Q17.9 12.5 15.2 14.5L15.1 16.6', 'M9.1 18.5L14.9 18.3', 'M10 20.6Q12 21.7 14.1 20.5', 'M10.4 13.8L10.1 10Q12 11.7 13.9 9.9L13.6 13.8', 'M2.6 4.6L4.3 5.8', 'M21.4 4.7L19.8 5.8', 'M1.9 10.1L3.6 10', 'M22.1 10L20.4 10.1'] },
+  bag: { f: 'M5 8L19 8L20 20.5L4 20.5Z', k: ['M5.1 7.8Q12 8.3 18.9 7.9L20.2 20.4Q12 20.9 3.8 20.5L5 7.7', 'M8.8 10.9L8.8 6.4Q9 3.1 12 3.2Q15.1 3.2 15.2 6.5L15.3 10.9'] },
+  pad: { f: 'M7 8Q12 7 17 8Q21.6 8.6 21.8 14.4Q22 18.5 19 18.2Q17 18 15.6 15.6L8.4 15.6Q7 18 5 18.2Q2 18.5 2.2 14.4Q2.4 8.6 7 8Z', k: ['M7.1 7.9Q12 6.9 17.1 7.9Q21.7 8.6 21.9 14.5Q22 18.6 19 18.3Q17 18 15.6 15.5Q12 15.9 8.4 15.6Q7 18.1 5 18.3Q1.9 18.5 2.1 14.3Q2.4 8.5 7.3 7.9', 'M7 10.4L7.1 14.3', 'M5.1 12.4L9 12.3'], o: [[16.3, 11.1, .9], [18.4, 13.3, .9]] },
+  pill: { f: 'M9.6 9.4L13.9 5.1Q16.7 2.6 19.3 5.2Q21.9 8 19 10.7L14.8 14.8Z', k: ['M5.2 13.6L13.6 5.2Q16.6 2.4 19.4 5.2Q22.1 8.1 19 10.9L10.6 19.3Q7.5 22 4.8 19.2Q2.1 16.3 5.3 13.5', 'M9.3 9.4L14.8 14.9', 'M14.6 7.6L16.4 6.2', 'M19.6 15.2L19.7 18.6', 'M18 16.9L21.4 16.8'] },
+  gift: { f: 'M4 10L20 10L19.5 20.5L4.5 20.5Z', k: ['M3 7.2Q12 6.7 21 7.3L20.8 10.4Q12 10.1 3.2 10.6Z', 'M4.4 10.5L4.6 20.6Q12 21 19.4 20.5L19.6 10.3', 'M12 7.1L12.1 20.8', 'M12 7Q8 2.1 6.5 4.8Q6 7.1 12 7Q18 7 17.5 4.7Q16 2.1 12 7'] },
+  kid: { f: 'M12 4.2Q19.4 4.4 19.6 12.2Q19.4 19.8 12 20Q4.6 19.8 4.4 12.2Q4.6 4.4 12 4.2Z', k: ['M12 4.2Q19.5 4.4 19.7 12.2Q19.4 19.9 12 20.1Q4.5 19.8 4.3 12.1Q4.6 4.3 12.4 4.2', 'M10 4.6Q10.9 2.1 13.7 2.7Q12 3.3 12.7 4.4', 'M9.2 10.9L9.2 12.1', 'M14.8 10.9L14.8 12.1', 'M9.4 15Q12 17.5 14.7 15'], c: [[7.6, 14, 1.3], [16.4, 14, 1.3]] },
+  cat: { f: 'M5 9L4.6 3.6L9 6.6Q12 5.8 15 6.6L19.4 3.6L19 9Q21 12 20 15.4Q18.4 20 12 20Q5.6 20 4 15.4Q3 12 5 9Z', k: ['M5 9.1L4.5 3.5L9 6.5Q12 5.7 15.1 6.6L19.5 3.5L19.1 9.1Q21.1 12.1 20.1 15.5Q18.4 20.1 12 20.1Q5.5 20 3.9 15.4Q3 12 5.1 8.9', 'M8.3 12.3Q9.3 11 10.3 12.3', 'M13.7 12.3Q14.7 11 15.7 12.3', 'M11.2 14.4L12 15L12.8 14.4', 'M12 15Q11.1 16.5 10 15.8', 'M12 15Q12.9 16.5 14 15.8', 'M1.6 13.4L6.4 14.2', 'M2 16.5L6.6 15.6', 'M22.4 13.4L17.6 14.2', 'M22 16.5L17.4 15.6'] },
+  box: { f: 'M4 9L12 12.4L20 9L20 17.6L12 21L4 17.6Z', k: ['M4 8.6L12 5L20.1 8.7L12 12.3Z', 'M4 8.9L4.2 17.6L12 21.2L19.8 17.7L20 8.8', 'M12 12.3L12.1 21', 'M8 6.8L16.1 10.5', 'M16.4 15.4L18.4 14.5'] },
+  coin: { f: 'M8.6 8Q3.4 12.4 4.4 17Q5.4 20.8 12 20.8Q18.6 20.8 19.6 17Q20.6 12.4 15.4 8Z', k: ['M8.7 8Q3.3 12.4 4.3 17.1Q5.4 20.9 12 20.9Q18.7 20.8 19.7 17Q20.6 12.3 15.3 7.9', 'M8.4 8.1Q12 8.9 15.6 8', 'M9 7.6L7.4 4Q12 2.3 16.6 4.1L15 7.6', 'M13.7 12.6Q12 11.3 10.6 12.4Q9.7 13.7 12 14.4Q14.5 15.2 13.4 16.8Q12 17.9 10.1 16.6', 'M12 10.6L12 11.7', 'M12 17.5L12 18.6'] },
+  tag: { f: 'M3.5 4L11 3.6L20.6 13.2L13.2 20.6L3.6 11Z', k: ['M3.4 4.1L11.1 3.5L20.7 13.1L13.2 20.7L3.5 11.1Z'], o: [[7.6, 7.6, 1.4]] },
+  /* 線條小圖示（無色塊，跟著文字顏色） */
+  dots: { k: ['M6.8 5.6Q8.6 5.7 8.4 7.3Q8.2 8.7 6.8 8.5Q5.3 8.3 5.5 6.9Q5.7 5.7 7 5.6', 'M17 5.4Q18.7 5.6 18.5 7.1Q18.3 8.6 16.9 8.4Q15.4 8.3 15.6 6.8Q15.8 5.5 17.2 5.5', 'M6.9 15.6Q8.6 15.7 8.5 17.2Q8.3 18.7 6.8 18.5Q5.4 18.3 5.5 16.9Q5.7 15.6 7.1 15.6', 'M17.1 15.5Q18.6 15.7 18.5 17.1Q18.3 18.6 16.9 18.5Q15.4 18.3 15.6 16.9Q15.8 15.5 17.3 15.6'] },
+  more: { k: ['M4.5 12.2Q5.4 11.4 6.1 12.1Q6.5 13 5.4 13.2Q4.5 13.2 4.6 12.2', 'M11.4 11.9Q12.4 11.3 13 12.1Q13.3 13 12.3 13.1Q11.3 13.1 11.5 12', 'M18.2 12Q19.1 11.4 19.7 12.1Q20 13 19 13.1Q18 13.1 18.2 12'] },
+  add: { k: ['M12.6 3.3Q20.6 3.4 20.8 12Q20.5 20.7 12 20.8Q3.3 20.6 3.2 12.2Q3.5 3.8 11.2 3.3', 'M12 8Q12.2 12 11.9 16.2', 'M7.9 12.1Q12 11.8 16.2 12'] },
+  list: { k: ['M8.4 6.1Q14 5.6 20.2 6.2', 'M8.2 12.1Q14 11.7 20.1 12', 'M8.4 18Q14 17.6 19.9 18.1', 'M3.6 5.7L4.4 6.4', 'M3.5 11.7L4.4 12.4', 'M3.6 17.6L4.5 18.3'] },
+  stat: { k: ['M5.1 19.6L5.3 11.1', 'M12 19.7L11.8 4.1', 'M18.9 19.6L19.1 13.9', 'M2.8 20.6Q12 20.1 21.2 20.7'] },
+  gear: { k: ['M12.3 8.9Q15.2 9.2 15.1 12.1Q14.9 15.1 12 15.1Q9 14.9 8.9 12.1Q9 9 12.4 8.9', 'M12.2 6Q18.1 6.1 18 12Q17.8 18.1 11.9 18Q5.9 17.8 6 12.1Q6.2 6.1 12.6 6', 'M12 2.6L12.1 5.6', 'M12 18.4L11.9 21.4', 'M2.6 12.1L5.6 12', 'M18.4 12L21.4 11.9', 'M5.3 5.3L7.4 7.4', 'M16.6 16.6L18.7 18.7', 'M18.7 5.3L16.6 7.4', 'M7.4 16.6L5.3 18.7'] },
+  pen: { k: ['M4.2 19.8L5 15.8L15.6 5.2Q17.2 3.8 18.6 5.3Q20.2 6.8 18.8 8.4L8.2 19L4.2 19.8', 'M14.2 6.8L17.2 9.8', 'M5.1 15.9L8.1 18.9'] },
+  cal: { k: ['M4.1 6.4Q12 5.9 19.9 6.3Q20.3 13 19.8 20Q12 20.4 4.3 19.9Q3.8 13 4.1 6.4', 'M4.2 10.2Q12 9.8 19.8 10.1', 'M8.2 3.8L8.3 7.6', 'M15.8 3.7L15.7 7.6', 'M8 13.6L8.8 14', 'M12 13.5L12.8 13.9', 'M16 13.6L16.7 14', 'M8 16.8L8.8 17.2', 'M12 16.7L12.8 17.1'] },
+  ok: { k: ['M12.6 3.3Q20.6 3.4 20.8 12Q20.5 20.7 12 20.8Q3.3 20.6 3.2 12.2Q3.5 3.8 11.2 3.3', 'M7.8 12.4L10.9 15.6L16.6 8.6'] },
+  bin: { k: ['M3.8 6.6Q12 6.1 20.2 6.7', 'M9.2 6.4L9.6 3.9Q12 3.4 14.5 3.9L14.8 6.4', 'M5.8 6.8L6.9 20.1Q12 20.6 17.1 20L18.2 6.8', 'M10 10.2L10.3 16.6', 'M14 10.1L13.8 16.7'] },
+  rep: { k: ['M4.5 11.5Q4.6 6.6 9.6 6.6L18.6 6.7', 'M15.6 3.6L18.7 6.7L15.7 9.6', 'M19.5 12.5Q19.4 17.4 14.4 17.4L5.4 17.3', 'M8.4 20.4L5.3 17.3L8.3 14.4'] },
+  move: { k: ['M4.2 5.2Q4.1 12.6 11.6 12.9L19.6 13', 'M16.4 9.8L19.7 13L16.5 16.2'] },
+};
+function hd(name, color, cls = '') {
+  const g = HD[name] || HD.tag;
+  let s = `<svg class="hd${color ? ' c' : ''}${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true">`;
+  if (g.f && color) s += `<path class="f" d="${g.f}" fill="${color}" transform="translate(.9 1)"/>`;
+  if (g.c) s += g.c.map(([x, y, r]) => `<circle class="f" cx="${x}" cy="${y}" r="${r}" fill="#f472b6"/>`).join('');
+  s += `<g class="k">${g.k.map((d) => `<path d="${d}"/>`).join('')}${(g.o || []).map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</g></svg>`;
+  return s;
+}
+/* 分類圖示：用預設大類的 ID 對應手繪圖與色調 */
 const CAT_LOOK = {
-  'exp-00': ['🍜', '#f97316'], 'exp-01': ['🚗', '#3b82f6'], 'exp-02': ['🏠', '#8b5cf6'], 'exp-03': ['💡', '#eab308'],
-  'exp-04': ['🛍️', '#ec4899'], 'exp-05': ['🎮', '#22c55e'], 'exp-06': ['💊', '#14b8a6'], 'exp-07': ['🎁', '#ef4444'],
-  'exp-08': ['🧒', '#84cc16'], 'exp-09': ['🐱', '#b45309'], 'exp-10': ['📦', '#64748b'], 'inc-00': ['💰', '#16a34a'],
+  'exp-00': ['bowl', '#f97316'], 'exp-01': ['car', '#3b82f6'], 'exp-02': ['house', '#8b5cf6'], 'exp-03': ['bulb', '#eab308'],
+  'exp-04': ['bag', '#ec4899'], 'exp-05': ['pad', '#22c55e'], 'exp-06': ['pill', '#14b8a6'], 'exp-07': ['gift', '#ef4444'],
+  'exp-08': ['kid', '#84cc16'], 'exp-09': ['cat', '#b45309'], 'exp-10': ['box', '#64748b'], 'inc-00': ['coin', '#16a34a'],
 };
 function catLook(rootId) {
   const c = S.catById.get(rootId);
   const rid = c && c.parentId ? c.parentId : rootId;
-  return CAT_LOOK[rid] || ['🏷️', '#64748b'];
+  const [n, h] = CAT_LOOK[rid] || ['tag', '#64748b'];
+  return [hd(n, h), h];
 }
 function catIcon(rootId, size = '') {
   const [e, h] = catLook(rootId);
   return `<span class="ic${size ? ' ' + size : ''}" style="background:${h}26" aria-hidden="true">${e}</span>`;
+}
+
+/* ── 四季：依記一筆的日期換底色、日期卡插圖與邊角點綴（春3-5、夏6-8、秋9-11、冬12-2）── */
+function seasonOf(date) {
+  const m = Number(date.slice(5, 7));
+  return m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter';
+}
+const SART = (() => {
+  const K = 'class="sk"';   // 墨線
+  const blossom = (x, y, r, rot = 0) => {
+    let s = `<g transform="translate(${x} ${y}) rotate(${rot})">`;
+    for (let i = 0; i < 5; i++) s += `<ellipse cx="0" cy="${-r * .55}" rx="${r * .42}" ry="${r * .55}" transform="rotate(${i * 72})" fill="#f9a8c4" ${K}/>`;
+    return s + `<circle r="${r * .22}" fill="#f472a0"/><path d="M0 0l${r * .3} ${-r * .5}M0 0l${-r * .35} ${-r * .45}" class="sk" stroke-width=".8"/></g>`;
+  };
+  const petal = (x, y, rot, s = 1) => `<path transform="translate(${x} ${y}) rotate(${rot}) scale(${s})" d="M0 0Q3.5-4.5 7-1Q4 3.5 0 0Z" fill="#f9a8c4" ${K}/>`;
+  const maple = (x, y, rot, s, c) => `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s}) translate(-10 -10)"><path d="M10 1L11.6 5.6L14.6 4L13.8 8.4L18.6 7.4L16.4 11L19 12.6L13.4 14L14 16.4L10.4 14.8L9.6 14.8L6 16.4L6.6 14L1 12.6L3.6 11L1.4 7.4L6.2 8.4L5.4 4L8.4 5.6Z" fill="${c}" transform="translate(.6 .7)" stroke="none"/><path d="M10 1L11.6 5.6L14.6 4L13.8 8.4L18.6 7.4L16.4 11L19 12.6L13.4 14L14 16.4L10.4 14.8L9.6 14.8L6 16.4L6.6 14L1 12.6L3.6 11L1.4 7.4L6.2 8.4L5.4 4L8.4 5.6Z" fill="none" ${K}/><path d="M10 14.8L10.3 20.2M10 14.6L10 4.6M10 11.8L15.6 8.6M10 11.8L4.4 8.6" ${K} stroke-width=".7"/></g>`;
+  const ginkgo = (x, y, rot, s) => `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s}) translate(-10 -10)"><path d="M10 12Q2 10.5 2.6 4.2Q6.4 1.6 10 5Q13.6 1.6 17.4 4.2Q18 10.5 10 12Z" fill="#facc15" transform="translate(.6 .7)" stroke="none"/><path d="M10 12Q2 10.5 2.6 4.2Q6.4 1.6 10 5Q13.6 1.6 17.4 4.2Q18 10.5 10 12ZM10 12L10.4 18.6" fill="none" ${K}/></g>`;
+  const flake = (x, y, r, rot = 0) => {
+    let s = `<g transform="translate(${x} ${y}) rotate(${rot})" class="sf">`;
+    for (let i = 0; i < 6; i++) s += `<path transform="rotate(${i * 60})" d="M0 0L0 ${-r}M0 ${-r * .55}l${r * .28} ${-r * .26}M0 ${-r * .55}l${-r * .28} ${-r * .26}"/>`;
+    return s + '</g>';
+  };
+  const sparkle = (x, y, r) => `<path transform="translate(${x} ${y})" d="M0 ${-r}Q.6 -.6 ${r} 0Q.6 .6 0 ${r}Q-.6 .6 ${-r} 0Q-.6 -.6 0 ${-r}Z" fill="#fcd34d" ${K}/>`;
+  const wave = (x, y, n = 3) => `<path transform="translate(${x} ${y})" d="M0 0${'q4 -4.5 8 0t8 0'.repeat(n)}" fill="none" class="sw"/>`;
+  const dot = (x, y, r, c) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`;
+  const svg = (w, h, body) => `<svg viewBox="0 0 ${w} ${h}" aria-hidden="true">${body}</svg>`;
+  return {
+    spring: {
+      card: svg(130, 70, `<g transform="translate(0 16)"><path d="M134 4Q112 9 100 22Q90 34 70 40Q60 43 52 52" fill="none" class="sb"/><path d="M104 18Q110 30 104 44" fill="none" class="sb" stroke-width="1.6"/>
+        ${blossom(100, 24, 9, 10)}${blossom(70, 40, 8, -20)}${blossom(104, 46, 7, 40)}${blossom(122, 8, 8, 0)}${blossom(53, 53, 5.5, 15)}
+        ${petal(36, 20, 30, .9)}${petal(20, 50, -40, .8)}${petal(84, 60, 70, .8)}</g>`),
+      deco: [petal(0, 0, 20, 2.2), petal(0, 0, -50, 1.8), blossom(0, 0, 9, 10), petal(0, 0, 80, 2), petal(0, 0, 140, 1.6), blossom(0, 0, 7, 30)],
+    },
+    summer: {
+      card: svg(130, 70, `<g transform="translate(2 6)"><circle cx="104" cy="22" r="13" fill="#fcd34d" transform="translate(1 1.2)"/><path d="M104 9Q117.4 9.2 117 22.2Q116.6 35 103.8 35Q91 34.6 91.1 21.8Q91.4 9.4 105 9.2" fill="none" class="sk"/>
+        <path d="M104 2.5L104.3 5.6M104 38.6L103.8 41.6M84.6 22L87.6 22.2M120.4 22L123.4 21.8M90.4 8.4L92.6 10.6M115.6 33.4L117.8 35.6M117.8 8.4L115.6 10.6M92.6 33.4L90.4 35.6" class="sk" stroke-width="1.4"/>
+        <path d="M100 20.4Q100.8 19.4 101.6 20.4M106.6 20.4Q107.4 19.4 108.2 20.4M100.6 25.4Q104 28.4 107.6 25.4" fill="none" class="sk" stroke-width="1"/>
+        <path d="M54 30Q54 24 60 25Q62 19 69 21Q75 19 76.6 25.4Q81.4 26 80.6 30.6Q80 33 76 33L57 33Q54 33 54 30Z" fill="#fff" class="sk" stroke-width="1.1"/>
+        ${wave(40, 56, 3)}${wave(74, 63, 2)}${sparkle(30, 22, 4)}</g>`),
+      deco: [sparkle(0, 0, 8), wave(-24, 0, 3), sparkle(0, 0, 6), wave(-16, 0, 2), sparkle(0, 0, 7), wave(-24, 0, 3)],
+    },
+    autumn: {
+      card: svg(130, 70, `<g transform="translate(-4 14)">${maple(104, 24, 15, 1.7, '#f97316')}${maple(72, 46, -25, 1.25, '#dc2626')}${ginkgo(112, 52, 30, 1.1)}${ginkgo(48, 22, -30, .85)}${maple(34, 54, 50, .8, '#f59e0b')}</g>`),
+      deco: [maple(0, 0, 20, 1.6, '#f97316'), ginkgo(0, 0, -30, 1.4), maple(0, 0, -40, 1.3, '#dc2626'), ginkgo(0, 0, 40, 1.2), maple(0, 0, 70, 1.4, '#f59e0b'), ginkgo(0, 0, 10, 1.3)],
+    },
+    winter: {
+      card: svg(130, 70, `<g transform="translate(4 4)"><circle cx="104" cy="50" r="14" fill="#fff" class="sk"/><circle cx="104" cy="29" r="9.5" fill="#fff" class="sk"/>
+        <path d="M94.8 36.6Q104 41.2 113.4 36.4L114 40.2Q104 44 94.4 40.4Z" fill="#ef4444" class="sk" stroke-width="1"/><path d="M110 39.6L113.6 48.6L109.6 47.8" fill="#ef4444" class="sk" stroke-width="1"/>
+        <path d="M94.6 21.6Q104 19.4 113.4 21.8M97.4 21L98.4 12.6Q104 10.4 109.8 12.8L110.6 21.2" fill="#60a5fa" class="sk" stroke-width="1.1"/>
+        ${dot(100.6, 27.4, 1.1, 'var(--ink)')}${dot(107.4, 27.4, 1.1, 'var(--ink)')}<path d="M104 30.2L110.6 31.6L104 32.4Z" fill="#fb923c" class="sk" stroke-width=".8"/>
+        ${dot(104, 46, 1, 'var(--ink)')}${dot(104, 51.5, 1, 'var(--ink)')}<path d="M91 47L82 42M117 47L125 41" class="sk" stroke-width="1.2"/>
+        ${flake(70, 22, 8, 10)}${flake(46, 48, 6, 0)}${flake(124, 12, 5, 20)}${flake(80, 56, 4.5, 15)}</g>`),
+      deco: [flake(0, 0, 13, 0), flake(0, 0, 9, 15), dot(0, 0, 4, '#bfdbfe'), flake(0, 0, 11, 30), dot(0, 0, 3, '#bfdbfe'), flake(0, 0, 10, 5)],
+    },
+  };
+})();
+// 邊角點綴擺放位置：[left 或 right, %, top %]，盡量落在畫面邊緣與卡片之間的空隙
+const SDECO_POS = [['right', -4, 3], ['left', -5, 33], ['right', -5, 50], ['left', -5, 66], ['right', -4, 84], ['left', 26, 97]];
+let curSeason = '';
+function applySeason(date) {
+  const s = seasonOf(date);
+  if (s === curSeason) return;
+  curSeason = s;
+  document.documentElement.dataset.season = s;
+  const art = SART[s];
+  $('#seasonDeco').innerHTML = art.deco.map((d, i) => {
+    const [side, x, y] = SDECO_POS[i];
+    return `<svg class="sd" viewBox="-30 -30 60 60" style="${side}:${x}%;top:${y}%" aria-hidden="true">${d}</svg>`;
+  }).join('');
+  $('#dateArt').innerHTML = art.card;
 }
 
 /* ── 小工具 ── */
@@ -215,7 +324,7 @@ function heroInfo(date) {
     diff,
     label: `${date.slice(0, 4) !== T.slice(0, 4) ? d.getFullYear() + '年' : ''}${d.getMonth() + 1}月${d.getDate()}日 週${WEEK[d.getDay()]}`,
     badge: diff === 0 ? '今天' : diff === 1 ? '昨天' : diff === -1 ? '明天・預定' : diff > 0 ? `${diff} 天前` : `${-diff} 天後・預定`,
-    cls: diff === 0 ? 'today' : diff > 0 ? 'past' : 'future',
+    cls: (diff === 0 ? 'today' : diff > 0 ? 'past' : 'future') + ' s-' + seasonOf(date),
   };
 }
 function dayData(date) {
@@ -239,7 +348,7 @@ const dayListHTML = (items) => (items.length
 function sidePageHTML(date) {
   const h = heroInfo(date), dd = dayData(date);
   return `<div class="date-hero ${h.cls}"><span class="dh-pick"><span class="dh-date">${h.label}</span></span><span class="dh-badge">${h.badge}</span>
-    <span class="day-sum">${daySumHTML(dd)}</span></div><div class="day-wrap"><div class="day-inline">${dayListHTML(dd.items)}</div></div>`;
+    <span class="day-sum">${daySumHTML(dd)}</span></div><div class="day-wrap"><span class="dh-art">${SART[seasonOf(date)].card}</span><div class="day-inline">${dayListHTML(dd.items)}</div></div>`;
 }
 function renderDate() {
   $('#date').value = S.date;
@@ -247,6 +356,7 @@ function renderDate() {
   $('#dateLabel').textContent = h.label;
   $('#dateBadge').textContent = h.badge;
   $('#dateHero').className = 'date-hero ' + h.cls;
+  applySeason(S.date);
   $('#dayToday').disabled = h.diff === 0;
 }
 const mdOf = (s) => `${Number(s.slice(5, 7))}/${Number(s.slice(8))}`;
@@ -265,7 +375,7 @@ function renderCats() {
   $('#freqCats').innerHTML = shown.map((id) => {
     const c = S.catById.get(id); if (!c) return '';
     return `<button class="tile${id === S.subId ? ' on' : ''}" data-sub="${esc(id)}"><span class="e">${catLook(c.parentId || c.id)[0]}</span><span class="n">${esc(c.name)}</span></button>`;
-  }).join('') + '<button class="tile more" id="moreCats"><span class="e">⋯</span><span class="n">更多</span></button>';
+  }).join('') + `<button class="tile more" id="moreCats"><span class="e">${hd('more')}</span><span class="n">更多</span></button>`;
   $('#allCats').innerHTML = roots(S.type).map((r) => {
     const [e, h] = catLook(r.id);
     const subs = subsOf(r.id);
@@ -318,7 +428,7 @@ function renderRepeat(ed) {
   const pill = $('#repeatPill');
   pill.hidden = !!(ed && !ed.scheduled);   // 已入帳的紀錄不能改重複
   $('#repeat').value = S.repeat;
-  $('#repeatLabel').textContent = S.repeat ? `🔁 ${REPEAT_LABEL[S.repeat]}` : '不重複';
+  $('#repeatLabel').innerHTML = S.repeat ? `${hd('rep')} ${REPEAT_LABEL[S.repeat]}` : '不重複';
   pill.classList.toggle('on', !!S.repeat);
 }
 function resetForm(keepDate) {
@@ -1071,10 +1181,10 @@ async function catAction(e) {
 function openSubAction(id) {
   const c = S.catById.get(id); if (!c) return;
   const n = S.tx.filter((t) => t.subcategoryId === id && !t.deleted).length;
-  $('#catActTitle').textContent = `${catLook(c.parentId)[0]} ${catName(c.parentId)} › ${c.name}`;
+  $('#catActTitle').innerHTML = `${catLook(c.parentId)[0]} ${esc(catName(c.parentId))} › ${esc(c.name)}`;
   $('#catActBody').innerHTML = `<p class="note-text">這個小類有 ${n.toLocaleString()} 筆紀錄。</p>
-    <button class="item accent sa-btn" data-sa="rename">✏️ 改名</button>
-    <button class="item accent sa-btn" data-sa="move">↪︎ 搬到其他大類</button>`;
+    <button class="item accent sa-btn" data-sa="rename">${hd('pen')} 改名</button>
+    <button class="item accent sa-btn" data-sa="move">${hd('move')} 搬到其他大類</button>`;
   $('#catActBody').dataset.id = id;
   openDrawer('catActDrawer');
 }

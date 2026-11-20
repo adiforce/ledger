@@ -146,11 +146,17 @@ nav.tabs svg{width:22px;height:22px}
 @media (prefers-color-scheme: dark){.bars .ln{fill:#4a3d78}.bars .ln.on{fill:#a78bfa}}
 .loan-split{margin:2px 0 6px;font-size:14px;color:var(--sub)}
 .loan-split b{color:var(--text);font-size:17px;margin-left:2px}
-.loan-split span{margin-left:10px;color:#8b5cf6}
-@media (prefers-color-scheme: dark){.loan-split span{color:#a78bfa}}
+.loan-split span{margin-left:10px}
+.ln-t{color:#8b5cf6}.cl-t{color:#3b82f6}
+@media (prefers-color-scheme: dark){.ln-t{color:#a78bfa}.cl-t{color:#60a5fa}}
+.bars .cl{fill:#bcd3fb}
+.bars .cl.on{fill:#3b82f6}
+.bars .val.cl-t{fill:#3b82f6}
+@media (prefers-color-scheme: dark){.bars .cl{fill:#23406e}.bars .cl.on{fill:#60a5fa}.bars .val.cl-t{fill:#60a5fa}}
+.lg-car::before{background:#3b82f6!important}
 .bars .val{fill:var(--accent)}
-.bars .ln-t{fill:#8b5cf6}
-@media (prefers-color-scheme: dark){.bars .ln-t{fill:#a78bfa}}
+.bars .val.ln-t{fill:#8b5cf6}
+@media (prefers-color-scheme: dark){.bars .val.ln-t{fill:#a78bfa}}
 .lg-loan{margin-left:8px;font-size:12px;font-weight:400;color:var(--sub)}
 .lg-loan::before{content:'';display:inline-block;width:9px;height:9px;border-radius:2px;background:#8b5cf6;margin-right:4px;vertical-align:0}
 .bars .hit{fill:transparent;cursor:pointer}
@@ -654,7 +660,7 @@ html[data-season=winter]{--bg:#e9eef5;--line:#d8e0ea;--key-op:#dce4ee;--rule:#e4
       </div>
       <div class="hero" id="statHero"></div>
       <div class="card"><div class="card-h"><span>支出分類</span><span>點大類看細項</span></div><div id="statCats"></div></div>
-      <div class="card bars"><div class="card-h"><span><span id="trendTitle"></span><span class="lg-loan">房貸</span></span><span>點長條切換</span></div><div id="statTrend"></div></div>
+      <div class="card bars"><div class="card-h"><span><span id="trendTitle"></span><span class="lg-loan">房貸</span><span class="lg-loan lg-car">車貸</span></span><span>點長條切換</span></div><div id="statTrend"></div></div>
     </section>
 
     <!-- 設定 -->

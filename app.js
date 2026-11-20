@@ -1,11 +1,11 @@
 'use strict';
-const VERSION = '1.21.2';
+const VERSION = '1.22.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
   expense: {
     '餐飲': ['正餐', '飲料咖啡', '零食甜點', '水果', '食材'],
-    '交通': ['油費', '停車費', '維修保養', '大眾運輸', '機票'],
+    '交通': ['油費', '停車費', '維修保養', '大眾運輸', '機票', '車貸'],
     '居住': ['房貸', '管理費', '家具家用', '稅費'],
     '帳單': ['水電瓦斯', '電話網路'],
     '購物': ['3C', '服飾', '美容美髮', '書籍', '日用雜貨'],
@@ -275,12 +275,20 @@ function rebuildIndexes() {
   updateDue();
 }
 
+// 舊資料補小類（v1.22.0 加「交通/車貸」）；已有同名小類就不動
+async function ensureSub(rid, name, id) {
+  if (!S.cats.some((c) => c.id === rid) || S.cats.some((c) => c.parentId && c.name === name)) return;
+  if (S.cats.some((c) => c.id === id)) id = 'c-' + uid();
+  const c = { id, name, parentId: rid, type: 'expense', order: S.cats.filter((x) => x.parentId === rid).length };
+  S.cats.push(c); await putMany('categories', [c]);
+}
 async function loadAll() {
   S.cats = await getAll('categories');
   if (!S.cats.length) {
     S.cats = defaultCategories();
     await putMany('categories', S.cats);
   }
+  await ensureSub('exp-01', '車貸', 'exp-01-05');
   indexCats();
   S.tx = await getAll('tx');
   await loadBudget();
@@ -1343,11 +1351,13 @@ function barPath(x, y, w, h, r) {
   if (h <= 0) return '';
   return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
 }
-// 房貸：依小類名稱「房貸」認（改過 ID 也對得上）
-function loanOf(a) {
-  return S.cats.filter((c) => c.parentId && c.type === 'expense' && c.name === '房貸')
-    .reduce((s, c) => s + (a.subs.get(c.id) || 0), 0);
+// 貸款：依小類名稱認（改過 ID 也對得上），在長條上由下往上疊
+const LOANS = [{ name: '房貸', cls: 'ln' }, { name: '車貸', cls: 'cl' }];
+function loansOf(a) {
+  return LOANS.map((l) => S.cats.filter((c) => c.parentId && c.type === 'expense' && c.name === l.name)
+    .reduce((s, c) => s + (a.subs.get(c.id) || 0), 0));
 }
+const fmtW = (v) => (v >= 10000 ? (v / 10000).toFixed(1) + '萬' : money(Math.round(v)));
 function renderTrend() {
   let periods;
   if (ST.mode === 'month') {
@@ -1359,37 +1369,42 @@ function renderTrend() {
     periods = []; for (let y = start; y <= Number(ST.anchor); y++) periods.push(String(y));
     $('#trendTitle').textContent = '每年支出';
   }
-  // 房貸另外用顏色疊在長條底部（依小類名稱「房貸」認，改過 ID 也對得上）
   const aggs = periods.map((p) => aggregate(p));
   const vals = aggs.map((a) => a.exp);
-  const loans = aggs.map(loanOf);
-  const W = 340, H = 160, top = 32, base = 138, n = periods.length;
+  const loans = aggs.map(loansOf);
+  const W = 340, H = 174, top = 46, base = 152, n = periods.length;
   const max = Math.max(...vals, 1);
   const slot = W / n, bw = Math.max(6, Math.min(22, slot - 6));
+  const px = (v) => Math.round(v / max * (base - top));
   let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc($('#trendTitle').textContent)}">`;
   svg += `<line class="grid" x1="0" x2="${W}" y1="${base}" y2="${base}"/>`;
   periods.forEach((p, i) => {
-    const h = Math.round(vals[i] / max * (base - top));
+    const h = px(vals[i]);
     const x = i * slot + (slot - bw) / 2;
-    const on = p === ST.period;
-    const lh = Math.min(h, Math.round(loans[i] / max * (base - top)));
-    svg += `<path class="b${on ? ' on' : ''}" d="${barPath(x, base - h, bw, h, 4)}"/>`;
-    if (lh > 0) svg += lh >= h
-      ? `<path class="ln${on ? ' on' : ''}" d="${barPath(x, base - h, bw, h, 4)}"/>`
-      : `<rect class="ln${on ? ' on' : ''}" x="${x}" y="${base - lh}" width="${bw}" height="${lh}"/>`;
+    const on = p === ST.period ? ' on' : '';
+    svg += `<path class="b${on}" d="${barPath(x, base - h, bw, h, 4)}"/>`;
+    let acc = 0;
+    LOANS.forEach((l, k) => {
+      if (!loans[i][k]) return;
+      const y0 = acc; acc = Math.min(h, px(loans[i].slice(0, k + 1).reduce((s, v) => s + v, 0)));
+      const sh = acc - y0; if (sh <= 0) return;
+      svg += acc >= h
+        ? `<path class="${l.cls}${on}" d="${barPath(x, base - h, bw, sh, 4)}"/>`
+        : `<rect class="${l.cls}${on}" x="${x}" y="${base - acc}" width="${bw}" height="${sh}"/>`;
+    });
     const lab = ST.mode === 'month' ? `${Number(p.slice(5))}月` : `'${p.slice(2)}`;
     const showLab = ST.mode === 'month' || n <= 10 || i % 2 === (n - 1) % 2;
     if (showLab) svg += `<text x="${i * slot + slot / 2}" y="${base + 14}" text-anchor="middle">${lab}</text>`;
+    const lsum = loans[i].reduce((s, v) => s + v, 0);
     if (on) {
       const tx = Math.min(W - 24, Math.max(24, i * slot + slot / 2));
-      const fmt = (v) => (v >= 10000 ? (v / 10000).toFixed(1) + '萬' : money(Math.round(v)));
-      // 有房貸就分兩行：貼長條的是不含房貸（綠），上面一行是房貸（紫）
-      if (loans[i]) {
-        svg += `<text class="val" x="${tx}" y="${base - h - 6}" text-anchor="middle">${fmt(vals[i] - loans[i])}</text>`;
-        svg += `<text class="val ln-t" x="${tx}" y="${base - h - 20}" text-anchor="middle">${fmt(loans[i])}</text>`;
-      } else svg += `<text class="val" x="${tx}" y="${base - h - 6}" text-anchor="middle">${fmt(vals[i])}</text>`;
+      // 有貸款就分行，由上往下＝長條由下往上：房貸（紫）、車貸（藍）、其他（綠，貼長條），沒有的略過
+      const lines = [['val', vals[i] - lsum]];
+      if (lsum) [...LOANS.keys()].reverse().forEach((k) => { if (loans[i][k]) lines.push([`val ${LOANS[k].cls}-t`, loans[i][k]]); });
+      lines.forEach(([c, v], j) => { svg += `<text class="${c}" x="${tx}" y="${base - h - 6 - j * 14}" text-anchor="middle">${fmtW(v)}</text>`; });
     }
-    svg += `<rect class="hit" data-p="${p}" x="${i * slot}" y="0" width="${slot}" height="${H}"><title>${periodLabel(p)}：${money(vals[i])}${loans[i] ? `（房貸 ${money(loans[i])}）` : ''}</title></rect>`;
+    const tip = LOANS.map((l, k) => (loans[i][k] ? `${l.name} ${money(loans[i][k])}` : '')).filter(Boolean).join('、');
+    svg += `<rect class="hit" data-p="${p}" x="${i * slot}" y="0" width="${slot}" height="${H}"><title>${periodLabel(p)}：${money(vals[i])}${tip ? `（${tip}）` : ''}</title></rect>`;
   });
   $('#statTrend').innerHTML = svg + '</svg>';
 }
@@ -1411,7 +1426,7 @@ function renderStats() {
   if (ST.mode === 'month') $('#statPick').value = ST.period;
   const a = aggregate(ST.period), prev = aggregate(shiftPeriod(ST.period, -1));
   const days = daysElapsed(ST.period);
-  const loan = loanOf(a);
+  const ls = loansOf(a), lsum = ls.reduce((x, v) => x + v, 0);
   const bud = budgetFor(ST.period);
   let budHTML = '';
   if (bud) {
@@ -1420,7 +1435,7 @@ function renderStats() {
       <div class="txt"><span>預算 ${money(bud)}</span><span>${a.exp > bud ? `<span class="over-t">超支 ${money(a.exp - bud)}</span>` : `剩 ${money(bud - a.exp)}`}</span></div></div>`;
   }
   $('#statHero').innerHTML = `<small>支出</small><div class="big">${money(Math.round(a.exp))}</div>
-    ${loan ? `<div class="loan-split">不含房貸 <b>${money(Math.round(a.exp - loan))}</b><span>房貸 ${money(Math.round(loan))}</span></div>` : ''}
+    ${lsum ? `<div class="loan-split">不含${LOANS.filter((l, k) => ls[k]).map((l) => l.name).join('')} <b>${money(Math.round(a.exp - lsum))}</b>${LOANS.map((l, k) => (ls[k] ? `<span class="${l.cls}-t">${l.name} ${money(Math.round(ls[k]))}</span>` : '')).join('')}</div>` : ''}
     <div class="meta">${days ? `<span>日均 <b>${money(Math.round(a.exp / days))}</b></span>` : ''}<span>${a.n} 筆</span>
     ${prev.exp ? `<span>${pctDiff(a.exp, prev.exp)}</span>` : ''}<span>收入 <b>${money(Math.round(a.inc))}</b></span></div>${budHTML}`;
   const list = [...a.roots.entries()].sort((x, y) => y[1] - x[1]);

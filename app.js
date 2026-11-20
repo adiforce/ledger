@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.20.0';
+const VERSION = '1.21.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -1354,7 +1354,11 @@ function renderTrend() {
     periods = []; for (let y = start; y <= Number(ST.anchor); y++) periods.push(String(y));
     $('#trendTitle').textContent = '每年支出';
   }
-  const vals = periods.map((p) => aggregate(p).exp);
+  // 房貸另外用顏色疊在長條底部（依小類名稱「房貸」認，改過 ID 也對得上）
+  const loanIds = S.cats.filter((c) => c.parentId && c.type === 'expense' && c.name === '房貸').map((c) => c.id);
+  const aggs = periods.map((p) => aggregate(p));
+  const vals = aggs.map((a) => a.exp);
+  const loans = aggs.map((a) => loanIds.reduce((s, id) => s + (a.subs.get(id) || 0), 0));
   const W = 340, H = 150, top = 18, base = 128, n = periods.length;
   const max = Math.max(...vals, 1);
   const slot = W / n, bw = Math.max(6, Math.min(22, slot - 6));
@@ -1364,7 +1368,11 @@ function renderTrend() {
     const h = Math.round(vals[i] / max * (base - top));
     const x = i * slot + (slot - bw) / 2;
     const on = p === ST.period;
+    const lh = Math.min(h, Math.round(loans[i] / max * (base - top)));
     svg += `<path class="b${on ? ' on' : ''}" d="${barPath(x, base - h, bw, h, 4)}"/>`;
+    if (lh > 0) svg += lh >= h
+      ? `<path class="ln${on ? ' on' : ''}" d="${barPath(x, base - h, bw, h, 4)}"/>`
+      : `<rect class="ln${on ? ' on' : ''}" x="${x}" y="${base - lh}" width="${bw}" height="${lh}"/>`;
     const lab = ST.mode === 'month' ? `${Number(p.slice(5))}月` : `'${p.slice(2)}`;
     const showLab = ST.mode === 'month' || n <= 10 || i % 2 === (n - 1) % 2;
     if (showLab) svg += `<text x="${i * slot + slot / 2}" y="${base + 14}" text-anchor="middle">${lab}</text>`;
@@ -1372,7 +1380,7 @@ function renderTrend() {
       const tx = Math.min(W - 24, Math.max(24, i * slot + slot / 2));
       svg += `<text class="val" x="${tx}" y="${base - h - 6}" text-anchor="middle">${vals[i] >= 10000 ? (vals[i] / 10000).toFixed(1) + '萬' : money(vals[i])}</text>`;
     }
-    svg += `<rect class="hit" data-p="${p}" x="${i * slot}" y="0" width="${slot}" height="${H}"><title>${periodLabel(p)}：${money(vals[i])}</title></rect>`;
+    svg += `<rect class="hit" data-p="${p}" x="${i * slot}" y="0" width="${slot}" height="${H}"><title>${periodLabel(p)}：${money(vals[i])}${loans[i] ? `（房貸 ${money(loans[i])}）` : ''}</title></rect>`;
   });
   $('#statTrend').innerHTML = svg + '</svg>';
 }

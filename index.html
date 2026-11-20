@@ -141,6 +141,11 @@ nav.tabs svg{width:22px;height:22px}
 .bars .val{font-size:11px;fill:var(--text);font-weight:600}
 .bars .b{fill:var(--bar-dim)}
 .bars .b.on{fill:var(--accent)}
+.bars .ln{fill:#c9b8f5}
+.bars .ln.on{fill:#8b5cf6}
+@media (prefers-color-scheme: dark){.bars .ln{fill:#4a3d78}.bars .ln.on{fill:#a78bfa}}
+.lg-loan{margin-left:8px;font-size:12px;font-weight:400;color:var(--sub)}
+.lg-loan::before{content:'';display:inline-block;width:9px;height:9px;border-radius:2px;background:#8b5cf6;margin-right:4px;vertical-align:0}
 .bars .hit{fill:transparent;cursor:pointer}
 .bars .grid{stroke:var(--line);stroke-width:1}
 .cb{display:block;width:100%;text-align:left;padding:7px 0}
@@ -642,7 +647,7 @@ html[data-season=winter]{--bg:#e9eef5;--line:#d8e0ea;--key-op:#dce4ee;--rule:#e4
       </div>
       <div class="hero" id="statHero"></div>
       <div class="card"><div class="card-h"><span>支出分類</span><span>點大類看細項</span></div><div id="statCats"></div></div>
-      <div class="card bars"><div class="card-h"><span id="trendTitle"></span><span>點長條切換</span></div><div id="statTrend"></div></div>
+      <div class="card bars"><div class="card-h"><span><span id="trendTitle"></span><span class="lg-loan">房貸</span></span><span>點長條切換</span></div><div id="statTrend"></div></div>
     </section>
 
     <!-- 設定 -->

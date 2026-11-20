@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.21.0';
+const VERSION = '1.21.1';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -1343,6 +1343,11 @@ function barPath(x, y, w, h, r) {
   if (h <= 0) return '';
   return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
 }
+// 房貸：依小類名稱「房貸」認（改過 ID 也對得上）
+function loanOf(a) {
+  return S.cats.filter((c) => c.parentId && c.type === 'expense' && c.name === '房貸')
+    .reduce((s, c) => s + (a.subs.get(c.id) || 0), 0);
+}
 function renderTrend() {
   let periods;
   if (ST.mode === 'month') {
@@ -1355,10 +1360,9 @@ function renderTrend() {
     $('#trendTitle').textContent = '每年支出';
   }
   // 房貸另外用顏色疊在長條底部（依小類名稱「房貸」認，改過 ID 也對得上）
-  const loanIds = S.cats.filter((c) => c.parentId && c.type === 'expense' && c.name === '房貸').map((c) => c.id);
   const aggs = periods.map((p) => aggregate(p));
   const vals = aggs.map((a) => a.exp);
-  const loans = aggs.map((a) => loanIds.reduce((s, id) => s + (a.subs.get(id) || 0), 0));
+  const loans = aggs.map(loanOf);
   const W = 340, H = 150, top = 18, base = 128, n = periods.length;
   const max = Math.max(...vals, 1);
   const slot = W / n, bw = Math.max(6, Math.min(22, slot - 6));
@@ -1402,6 +1406,7 @@ function renderStats() {
   if (ST.mode === 'month') $('#statPick').value = ST.period;
   const a = aggregate(ST.period), prev = aggregate(shiftPeriod(ST.period, -1));
   const days = daysElapsed(ST.period);
+  const loan = loanOf(a);
   const bud = budgetFor(ST.period);
   let budHTML = '';
   if (bud) {
@@ -1410,6 +1415,7 @@ function renderStats() {
       <div class="txt"><span>預算 ${money(bud)}</span><span>${a.exp > bud ? `<span class="over-t">超支 ${money(a.exp - bud)}</span>` : `剩 ${money(bud - a.exp)}`}</span></div></div>`;
   }
   $('#statHero').innerHTML = `<small>支出</small><div class="big">${money(Math.round(a.exp))}</div>
+    ${loan ? `<div class="loan-split">不含房貸 <b>${money(Math.round(a.exp - loan))}</b><span>房貸 ${money(Math.round(loan))}</span></div>` : ''}
     <div class="meta">${days ? `<span>日均 <b>${money(Math.round(a.exp / days))}</b></span>` : ''}<span>${a.n} 筆</span>
     ${prev.exp ? `<span>${pctDiff(a.exp, prev.exp)}</span>` : ''}<span>收入 <b>${money(Math.round(a.inc))}</b></span></div>${budHTML}`;
   const list = [...a.roots.entries()].sort((x, y) => y[1] - x[1]);

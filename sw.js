@@ -1,5 +1,5 @@
 // 改了任何檔案就把版本號 +1，手機才會抓到新版
-const CACHE = 'ledger-v1.21.1';
+const CACHE = 'ledger-v1.21.2';
 const FONT_CACHE = 'ledger-fonts-iansui';   // 字型分片用到才下載，存在獨立快取，換版不清
 const ASSETS = ['./', './index.html', './app.js', './manifest.webmanifest', './icon-180.png', './icon-512.png', './fonts/iansui.css', './lib/sql-wasm.js', './lib/sql-wasm.wasm'];
 

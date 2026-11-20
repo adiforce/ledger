@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.21.1';
+const VERSION = '1.21.2';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -1363,7 +1363,7 @@ function renderTrend() {
   const aggs = periods.map((p) => aggregate(p));
   const vals = aggs.map((a) => a.exp);
   const loans = aggs.map(loanOf);
-  const W = 340, H = 150, top = 18, base = 128, n = periods.length;
+  const W = 340, H = 160, top = 32, base = 138, n = periods.length;
   const max = Math.max(...vals, 1);
   const slot = W / n, bw = Math.max(6, Math.min(22, slot - 6));
   let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc($('#trendTitle').textContent)}">`;
@@ -1382,7 +1382,12 @@ function renderTrend() {
     if (showLab) svg += `<text x="${i * slot + slot / 2}" y="${base + 14}" text-anchor="middle">${lab}</text>`;
     if (on) {
       const tx = Math.min(W - 24, Math.max(24, i * slot + slot / 2));
-      svg += `<text class="val" x="${tx}" y="${base - h - 6}" text-anchor="middle">${vals[i] >= 10000 ? (vals[i] / 10000).toFixed(1) + '萬' : money(vals[i])}</text>`;
+      const fmt = (v) => (v >= 10000 ? (v / 10000).toFixed(1) + '萬' : money(Math.round(v)));
+      // 有房貸就分兩行：貼長條的是不含房貸（綠），上面一行是房貸（紫）
+      if (loans[i]) {
+        svg += `<text class="val" x="${tx}" y="${base - h - 6}" text-anchor="middle">${fmt(vals[i] - loans[i])}</text>`;
+        svg += `<text class="val ln-t" x="${tx}" y="${base - h - 20}" text-anchor="middle">${fmt(loans[i])}</text>`;
+      } else svg += `<text class="val" x="${tx}" y="${base - h - 6}" text-anchor="middle">${fmt(vals[i])}</text>`;
     }
     svg += `<rect class="hit" data-p="${p}" x="${i * slot}" y="0" width="${slot}" height="${H}"><title>${periodLabel(p)}：${money(vals[i])}${loans[i] ? `（房貸 ${money(loans[i])}）` : ''}</title></rect>`;
   });

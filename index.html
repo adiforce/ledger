@@ -157,6 +157,16 @@ nav.tabs svg{width:22px;height:22px}
 .bars .val{fill:var(--accent)}
 .bars .val.ln-t{fill:#8b5cf6}
 @media (prefers-color-scheme: dark){.bars .val.ln-t{fill:#a78bfa}}
+/* 剛記的那筆：從上面滑進來＋底色閃一下＋金額彈一下 */
+.rw.fresh{animation:rwIn .35s cubic-bezier(.2,.8,.3,1.2) both}
+.rw.fresh .row{animation:rowFlash 2.4s ease-out both}
+.rw.fresh .row::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:4px;border-radius:0 3px 3px 0;background:var(--ribbon);animation:barFade 2.4s ease-out both}
+.rw.fresh .row .a{animation:amtPop .5s .15s ease-out both}
+@keyframes rwIn{from{max-height:0;opacity:0;transform:translateY(-10px)}to{max-height:90px;opacity:1;transform:none}}
+@keyframes rowFlash{0%,35%{background:var(--ribbon-soft)}100%{background:var(--card)}}
+@keyframes barFade{0%,60%{opacity:1}100%{opacity:0}}
+@keyframes amtPop{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion: reduce){.rw.fresh,.rw.fresh .row .a{animation:none}}
 .lg-loan{margin-left:8px;font-size:12px;font-weight:400;color:var(--sub)}
 .lg-loan::before{content:'';display:inline-block;width:9px;height:9px;border-radius:2px;background:#8b5cf6;margin-right:4px;vertical-align:0}
 .bars .hit{fill:transparent;cursor:pointer}

@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.22.0';
+const VERSION = '1.23.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -351,7 +351,8 @@ const daySumHTML = (dd) => (dd.items.length
   ? `<span>${dd.md} 已記 <b>${dd.real.length}</b> 筆・支出 <b>${money(dd.exp)}</b>${dd.inc ? `・收入 <b>${money(dd.inc)}</b>` : ''}${dd.sch ? `・預定 ${dd.sch}` : ''}</span>`
   : `<span>${dd.md} 還沒有紀錄</span>`);
 const dayListHTML = (items) => (items.length
-  ? `<div class="list">${items.map((t) => rowHTML(t).replace('class="row"', `class="row${t.id === S.editing ? ' editing' : ''}"`)).join('')}</div>`
+  ? `<div class="list">${items.map((t) => rowHTML(t).replace('class="rw"', `class="rw${t.id === S.fresh ? ' fresh' : ''}"`)
+    .replace('class="row"', `class="row${t.id === S.editing ? ' editing' : ''}"`)).join('')}</div>`
   : '<div class="di-empty">這天還沒有紀錄</div>');
 function sidePageHTML(date) {
   const h = heroInfo(date), dd = dayData(date);
@@ -502,6 +503,8 @@ async function save() {
   await putMany('tx', batch);
   scheduleSync();
   const wasEditing = !!S.editing;
+  // 剛記／剛改的那筆在當天清單上閃一下（只閃一次）
+  S.fresh = rec.id; setTimeout(() => { if (S.fresh === rec.id) S.fresh = null; }, 600);
   rebuildIndexes();
   resetForm(!wasEditing);
   toast(msg);
@@ -629,6 +632,7 @@ function renderDay() {
   $('#daySum').innerHTML = daySumHTML(dd);
   $('#daySum').disabled = false;
   $('#dayInline').innerHTML = dayListHTML(items);
+  if (S.fresh) { const f = $('#dayInline .rw.fresh'); if (f) f.scrollIntoView({ block: 'nearest' }); }
   $('#pagePrev').innerHTML = sidePageHTML(addDays(S.date, -1));
   $('#pageNext').innerHTML = sidePageHTML(addDays(S.date, 1));
   requestAnimationFrame(() => {

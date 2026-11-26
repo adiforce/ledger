@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.25.0';
+const VERSION = '1.26.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -782,12 +782,14 @@ const sortDesc = (a, b) => (a.date === b.date ? ((b.createdAt || '') > (a.create
 function renderList() {
   const q = S.query.trim();
   const f = S.filter;
-  $('#monthArea').style.display = q || f ? 'none' : '';
+  $('#monthArea').style.display = q ? 'none' : '';
   $('#filterChip').hidden = !f || !!q;
   let items;
   if (f && !q) {
     const c = S.catById.get(f.id);
-    $('#filterText').textContent = `${c?.parentId ? catName(c.parentId) + ' › ' : ''}${catName(f.id)}・${periodLabel(f.period)}`;
+    $('#filterText').textContent = `${c?.parentId ? catName(c.parentId) + ' › ' : ''}${catName(f.id)}`;
+    $('#monthLabel').textContent = periodLabel(f.period);
+    $('#monthPick').value = f.period.length === 7 ? f.period : '';
     $('#filterMin').classList.toggle('on', !!f.min);
     items = live().filter((t) => t.date.startsWith(f.period) && (t.subcategoryId === f.id || t.categoryId === f.id) && (!f.min || t.amount >= f.min));
   } else if (q) {
@@ -1743,7 +1745,7 @@ function bind() {
 
   $('#prevM').addEventListener('click', () => shiftMonth(-1));
   $('#nextM').addEventListener('click', () => shiftMonth(1));
-  $('#monthPick').addEventListener('change', (e) => { if (e.target.value) { S.month = e.target.value; S.listLimit = 300; renderList(); } });
+  $('#monthPick').addEventListener('change', (e) => { if (e.target.value) { if (S.filter) S.filter.period = e.target.value; else S.month = e.target.value; S.listLimit = 300; renderList(); } });
   let st;
   $('#search').addEventListener('input', (e) => { clearTimeout(st); st = setTimeout(() => { S.query = e.target.value; S.listLimit = 300; renderList(); }, 200); });
   $('#backupBanner').addEventListener('click', (e) => { if (e.target.id === 'bannerExport') exportData(); });
@@ -1815,10 +1817,14 @@ function setupMonthPop() {
       if (!pop.hidden) close(); else open(label, t);
     });
   };
-  hook('#monthPick', () => ({ get: () => S.month, set: (v) => { S.month = v; S.listLimit = 300; renderList(); } }));
+  hook('#monthPick', () => ({ get: () => (S.filter && S.filter.period.length === 7 ? S.filter.period : S.month), set: (v) => { if (S.filter) S.filter.period = v; else S.month = v; S.listLimit = 300; renderList(); } }));
   hook('#statPick', () => ST.mode !== 'month' ? null : ({ get: () => ST.period, set: (v) => { ST.period = v; keepInWindow(); renderStats(); } }));
 }
 function shiftMonth(d) {
+  if (S.filter) {   // 從統計跳來的篩選：上一期／下一期（月或年）
+    S.filter.period = shiftPeriod(S.filter.period, d);
+    S.listLimit = 300; return renderList();
+  }
   const [y, m] = S.month.split('-').map(Number);
   const dt = new Date(y, m - 1 + d, 1);
   S.month = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}`;

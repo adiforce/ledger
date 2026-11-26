@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.24.0';
+const VERSION = '1.25.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -788,7 +788,8 @@ function renderList() {
   if (f && !q) {
     const c = S.catById.get(f.id);
     $('#filterText').textContent = `${c?.parentId ? catName(c.parentId) + ' › ' : ''}${catName(f.id)}・${periodLabel(f.period)}`;
-    items = live().filter((t) => t.date.startsWith(f.period) && (t.subcategoryId === f.id || t.categoryId === f.id));
+    $('#filterMin').classList.toggle('on', !!f.min);
+    items = live().filter((t) => t.date.startsWith(f.period) && (t.subcategoryId === f.id || t.categoryId === f.id) && (!f.min || t.amount >= f.min));
   } else if (q) {
     items = live().filter((t) => (t.note || '').includes(q) || catName(t.subcategoryId).includes(q) || catName(t.categoryId).includes(q));
   } else {
@@ -804,7 +805,7 @@ function renderList() {
   $('#sumCard').innerHTML = (q || f)
     ? `<div><small>找到</small><b>${items.length} 筆</b></div><div><small>支出合計</small><b>${money(exp)}</b></div>`
     : `<div><small>支出</small><b>${money(exp)}</b></div><div><small>收入</small><b class="inc">${money(inc)}</b></div><div><small>結餘</small><b>${money(inc - exp)}</b></div>`;
-  if (!items.length) { $('#list').innerHTML = `<div class="empty">${q ? '找不到符合的紀錄' : '這個月還沒有紀錄'}</div>`; return; }
+  if (!items.length) { $('#list').innerHTML = `<div class="empty">${q ? '找不到符合的紀錄' : f ? (f.min ? `沒有 ${money(f.min)} 以上的項目` : '沒有紀錄') : '這個月還沒有紀錄'}</div>`; return; }
   const shown = items.slice(0, S.listLimit);
   $('#list').innerHTML = groupHTML(shown, !!q) +
     (items.length > shown.length ? `<button class="more" id="moreBtn">再顯示 300 筆（還有 ${items.length - shown.length} 筆）</button>` : '');
@@ -1295,6 +1296,7 @@ async function onBudgetInput(e) {
 }
 
 /* ── 統計 ── */
+const BIG_MIN = 1000;   // 「大額」門檻
 const ST = { mode: 'month', period: today().slice(0, 7), anchor: today().slice(0, 7), open: null };
 // 趨勢圖的範圍：月模式 = anchor 往前 12 個月；年模式 = anchor 往前最多 16 年
 function trendStart() {
@@ -1451,15 +1453,15 @@ function renderStats() {
       if (ST.open === id) {
         const subs = subsOf(id).map((s) => [s.id, a.subs.get(s.id) || 0]).filter(([, v]) => v).sort((x, y) => y[1] - x[1]);
         const sm = subs.length ? subs[0][1] : 0;
-        h += `<div class="subs">${subs.map(([sid, v]) => catBarHTML(sid, v, sm, amt, 0, true)).join('')}</div>`;
+        h += `<div class="subs">${subs.map(([sid, v]) => catBarHTML(sid, v, sm, amt, 0, true)).join('')}<button class="big-go" data-big="${esc(id)}">只看 ${money(BIG_MIN)} 以上的項目 ›</button></div>`;
       }
       return h;
     }).join('');
   }
   renderTrend();
 }
-function openCategoryList(id) {
-  S.filter = { id, period: ST.period };
+function openCategoryList(id, min = 0) {
+  S.filter = { id, period: ST.period, min };
   switchView('v-list');
 }
 function bindStats() {
@@ -1479,6 +1481,8 @@ function bindStats() {
     ST.period = r.dataset.p; renderStats();
   });
   $('#statCats').addEventListener('click', (e) => {
+    const big = e.target.closest('[data-big]');
+    if (big) return openCategoryList(big.dataset.big, BIG_MIN);
     const sub = e.target.closest('[data-sub]');
     if (sub) return openCategoryList(sub.dataset.sub);
     const root = e.target.closest('[data-root]'); if (!root) return;
@@ -1746,6 +1750,7 @@ function bind() {
   setupSwipe();
   setupMonthPop();
   $('#filterClear').addEventListener('click', () => { S.filter = null; renderList(); });
+  $('#filterMin').addEventListener('click', () => { if (S.filter) { S.filter.min = S.filter.min ? 0 : BIG_MIN; S.listLimit = 300; renderList(); } });
   bindStats();
   bindImport();
   bindSched();

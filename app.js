@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.26.0';
+const VERSION = '1.27.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -1751,6 +1751,7 @@ function bind() {
   $('#backupBanner').addEventListener('click', (e) => { if (e.target.id === 'bannerExport') exportData(); });
   setupSwipe();
   setupMonthPop();
+  setupTheme();
   $('#filterClear').addEventListener('click', () => { S.filter = null; renderList(); });
   $('#filterMin').addEventListener('click', () => { if (S.filter) { S.filter.min = S.filter.min ? 0 : BIG_MIN; S.listLimit = 300; renderList(); } });
   bindStats();
@@ -1819,6 +1820,29 @@ function setupMonthPop() {
   };
   hook('#monthPick', () => ({ get: () => (S.filter && S.filter.period.length === 7 ? S.filter.period : S.month), set: (v) => { if (S.filter) S.filter.period = v; else S.month = v; S.listLimit = 300; renderList(); } }));
   hook('#statPick', () => ST.mode !== 'month' ? null : ({ get: () => ST.period, set: (v) => { ST.period = v; keepInWindow(); renderStats(); } }));
+}
+/* ── 外觀：跟隨系統／淺色／深色（存在這個瀏覽器） ── */
+const THEME_KEY = 'ledgerTheme';
+function themePref() { try { const t = localStorage.getItem(THEME_KEY); return t === 'light' || t === 'dark' ? t : 'auto'; } catch (e) { return 'auto'; } }
+function applyTheme(t) {
+  const root = document.documentElement;
+  if (t === 'auto') root.removeAttribute('data-theme'); else root.dataset.theme = t;
+  const metas = document.querySelectorAll('meta[name=theme-color]');
+  const [lm, dm] = metas;
+  if (lm && dm) {
+    lm.media = t === 'auto' ? '(prefers-color-scheme: light)' : 'all';
+    dm.media = t === 'auto' ? '(prefers-color-scheme: dark)' : 'not all';
+    if (t === 'dark') { lm.content = '#111716'; } else { lm.content = '#eaf1ee'; }
+  }
+  document.querySelectorAll('#themeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
+}
+function setupTheme() {
+  applyTheme(themePref());
+  $('#themeSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-t]'); if (!b) return;
+    try { if (b.dataset.t === 'auto') localStorage.removeItem(THEME_KEY); else localStorage.setItem(THEME_KEY, b.dataset.t); } catch (err) { /* 無痕模式等存不了就只套用這次 */ }
+    applyTheme(b.dataset.t);
+  });
 }
 function shiftMonth(d) {
   if (S.filter) {   // 從統計跳來的篩選：上一期／下一期（月或年）

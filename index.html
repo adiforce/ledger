@@ -7,6 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="記帳">
+<script>try{var t=localStorage.getItem("ledgerTheme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <meta name="theme-color" content="#eaf1ee" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#111716" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
@@ -19,13 +20,16 @@
   --accent:#0f6e66; --accent-soft:#d9eeea; --ribbon:#e8743b; --ribbon-soft:#fbe6da; --danger:#c2410c; --income:#15803d;
   --key:#fff; --key-op:#dfe9e5; --on-accent:#fff; --bar-dim:#b5d8d1; --seg-on:#fff; --rule:#e6eeeb;
 }
-@media (prefers-color-scheme: dark){
-  :root{
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]){
+    --bg:#111716; --card:#1b2321; --line:#2a3532; --text:#e7eeeb; --sub:#93a19c;
+    --accent:#45c2b1; --accent-soft:#16312d; --ribbon:#f08a54; --ribbon-soft:#3a261c; --danger:#fb923c; --income:#4ade80;
+    --key:#212b29; --key-op:#2b3734; --on-accent:#08201d; --bar-dim:#24524b; --seg-on:#3a4744; --rule:#25302d;
+  }}
+:root[data-theme=dark]{
     --bg:#111716; --card:#1b2321; --line:#2a3532; --text:#e7eeeb; --sub:#93a19c;
     --accent:#45c2b1; --accent-soft:#16312d; --ribbon:#f08a54; --ribbon-soft:#3a261c; --danger:#fb923c; --income:#4ade80;
     --key:#212b29; --key-op:#2b3734; --on-accent:#08201d; --bar-dim:#24524b; --seg-on:#3a4744; --rule:#25302d;
   }
-}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
 html{touch-action:manipulation;-webkit-text-size-adjust:100%}
@@ -143,20 +147,24 @@ nav.tabs svg{width:22px;height:22px}
 .bars .b.on{fill:var(--accent)}
 .bars .ln{fill:#c9b8f5}
 .bars .ln.on{fill:#8b5cf6}
-@media (prefers-color-scheme: dark){.bars .ln{fill:#4a3d78}.bars .ln.on{fill:#a78bfa}}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]) .bars .ln{fill:#4a3d78}:root:not([data-theme=light]) .bars .ln.on{fill:#a78bfa}}
+:root[data-theme=dark] .bars .ln{fill:#4a3d78}:root[data-theme=dark] .bars .ln.on{fill:#a78bfa}
 .loan-split{margin:2px 0 6px;font-size:14px;color:var(--sub)}
 .loan-split b{color:var(--text);font-size:17px;margin-left:2px}
 .loan-split span{margin-left:10px}
 .ln-t{color:#8b5cf6}.cl-t{color:#3b82f6}
-@media (prefers-color-scheme: dark){.ln-t{color:#a78bfa}.cl-t{color:#60a5fa}}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]) .ln-t{color:#a78bfa}:root:not([data-theme=light]) .cl-t{color:#60a5fa}}
+:root[data-theme=dark] .ln-t{color:#a78bfa}:root[data-theme=dark] .cl-t{color:#60a5fa}
 .bars .cl{fill:#bcd3fb}
 .bars .cl.on{fill:#3b82f6}
 .bars .val.cl-t{fill:#3b82f6}
-@media (prefers-color-scheme: dark){.bars .cl{fill:#23406e}.bars .cl.on{fill:#60a5fa}.bars .val.cl-t{fill:#60a5fa}}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]) .bars .cl{fill:#23406e}:root:not([data-theme=light]) .bars .cl.on{fill:#60a5fa}:root:not([data-theme=light]) .bars .val.cl-t{fill:#60a5fa}}
+:root[data-theme=dark] .bars .cl{fill:#23406e}:root[data-theme=dark] .bars .cl.on{fill:#60a5fa}:root[data-theme=dark] .bars .val.cl-t{fill:#60a5fa}
 .lg-car::before{background:#3b82f6!important}
 .bars .val{fill:var(--accent)}
 .bars .val.ln-t{fill:#8b5cf6}
-@media (prefers-color-scheme: dark){.bars .val.ln-t{fill:#a78bfa}}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]) .bars .val.ln-t{fill:#a78bfa}}
+:root[data-theme=dark] .bars .val.ln-t{fill:#a78bfa}
 /* 剛記的那筆：從上面滑進來＋底色閃一下＋金額彈一下 */
 .rw.fresh{animation:rwIn .35s cubic-bezier(.2,.8,.3,1.2) both}
 .rw.fresh .row{animation:rowFlash 2.4s ease-out both}
@@ -392,7 +400,8 @@ nav.tabs{position:fixed;left:14px;right:14px;bottom:calc(8px + env(safe-area-ins
 nav.tabs button{padding:6px 0 5px;font-size:11px;border-radius:20px}
 nav.tabs svg{width:20px;height:20px}
 nav.tabs button svg{padding:2px 14px}
-@media (prefers-color-scheme: dark){nav.tabs{box-shadow:0 10px 28px rgba(0,0,0,.5)}}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]) nav.tabs{box-shadow:0 10px 28px rgba(0,0,0,.5)}}
+:root[data-theme=dark] nav.tabs{box-shadow:0 10px 28px rgba(0,0,0,.5)}
 /* 當天紀錄固定 3 行高 */
 .day-inline{flex:0 1 auto;max-height:150px}
 .add-top .amount{margin-top:auto}
@@ -453,7 +462,8 @@ main{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
 
 /* ── v1.15 ── */
 :root{--edit:#2563eb;--edit-soft:#dbeafe}
-@media (prefers-color-scheme: dark){:root{--edit:#60a5fa;--edit-soft:#172a4a}}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]){--edit:#60a5fa;--edit-soft:#172a4a}}
+:root[data-theme=dark]{--edit:#60a5fa;--edit-soft:#172a4a}
 /* 編輯模式 */
 .edit-bar{display:none;flex-direction:column;align-items:stretch;gap:8px;background:var(--edit-soft);border:2px solid var(--edit);border-radius:16px;padding:10px 12px;margin-bottom:8px;font-size:14px;flex-shrink:0}
 .edit-bar.on{display:flex}
@@ -548,7 +558,8 @@ body.on-add main{overflow-y:hidden}
 .day-inline,.imp-body,.drawer-b{overscroll-behavior-y:none}
 /* v1.19.0 手繪圖示＋四季 */
 :root{--ink:#3d342c}
-@media (prefers-color-scheme: dark){:root{--ink:#e6dccd}}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]){--ink:#e6dccd}}
+:root[data-theme=dark]{--ink:#e6dccd}
 .hd{display:inline-block;width:1.3em;height:1.3em;vertical-align:-.28em;overflow:visible;flex:none}
 .hd .k{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .hd.c .k{stroke:var(--ink);stroke-width:1.5}
@@ -568,12 +579,8 @@ html[data-season=spring]{--bg:#f7eef0;--line:#eddde2;--key-op:#f0e2e6;--rule:#f2
 html[data-season=summer]{--bg:#e5f2f4;--line:#d2e5e9;--key-op:#d7e9ed;--rule:#e0eef1}
 html[data-season=autumn]{--bg:#f4ecdf;--line:#e7dccb;--key-op:#ebe1d0;--rule:#efe6d8}
 html[data-season=winter]{--bg:#e9eef5;--line:#d8e0ea;--key-op:#dce4ee;--rule:#e4eaf2}
-@media (prefers-color-scheme: dark){
-  html[data-season=spring]{--bg:#191416;--line:#33292d;--key-op:#33292d;--rule:#2b2326}
-  html[data-season=summer]{--bg:#0f181b;--line:#233439;--key-op:#26373b;--rule:#1d2b2f}
-  html[data-season=autumn]{--bg:#1a1611;--line:#352d22;--key-op:#372f25;--rule:#2c251c}
-  html[data-season=winter]{--bg:#12161c;--line:#29313b;--key-op:#2c343e;--rule:#222931}
-}
+@media (prefers-color-scheme: dark){html:not([data-theme=light])[data-season=spring]{--bg:#191416;--line:#33292d;--key-op:#33292d;--rule:#2b2326}html:not([data-theme=light])[data-season=summer]{--bg:#0f181b;--line:#233439;--key-op:#26373b;--rule:#1d2b2f}html:not([data-theme=light])[data-season=autumn]{--bg:#1a1611;--line:#352d22;--key-op:#372f25;--rule:#2c251c}html:not([data-theme=light])[data-season=winter]{--bg:#12161c;--line:#29313b;--key-op:#2c343e;--rule:#222931}}
+html[data-theme=dark][data-season=spring]{--bg:#191416;--line:#33292d;--key-op:#33292d;--rule:#2b2326}html[data-theme=dark][data-season=summer]{--bg:#0f181b;--line:#233439;--key-op:#26373b;--rule:#1d2b2f}html[data-theme=dark][data-season=autumn]{--bg:#1a1611;--line:#352d22;--key-op:#372f25;--rule:#2c251c}html[data-theme=dark][data-season=winter]{--bg:#12161c;--line:#29313b;--key-op:#2c343e;--rule:#222931}
 .season-deco{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:.55}
 .season-deco .sd{position:absolute;width:54px;height:54px;overflow:visible}
 .sk{stroke:var(--ink);stroke-width:1;stroke-linecap:round;stroke-linejoin:round}
@@ -584,7 +591,8 @@ html[data-season=winter]{--bg:#e9eef5;--line:#d8e0ea;--key-op:#dce4ee;--rule:#e4
 .dh-art svg{width:100%;height:100%;overflow:visible}
 .day-wrap .day-inline,.day-wrap .more-hint{z-index:1}
 .day-inline .di-empty{align-items:flex-start;padding-top:16px}
-@media (prefers-color-scheme: dark){.season-deco{opacity:.35}.dh-art{opacity:.5}.dh-art [fill="#fff"]{fill:#2a3331}}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]) .season-deco{opacity:.35}:root:not([data-theme=light]) .dh-art{opacity:.5}:root:not([data-theme=light]) .dh-art [fill="#fff"]{fill:#2a3331}}
+:root[data-theme=dark] .season-deco{opacity:.35}:root[data-theme=dark] .dh-art{opacity:.5}:root[data-theme=dark] .dh-art [fill="#fff"]{fill:#2a3331}
 /* 桌機選月份（瀏覽器內建的 month 選單在桌機常常點了沒反應） */
 @media (pointer:fine){.month-title input{pointer-events:none}.month-title{cursor:pointer}}
 .mpop{position:fixed;z-index:70;width:244px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;box-shadow:0 8px 28px rgba(0,0,0,.18)}
@@ -597,6 +605,7 @@ html[data-season=winter]{--bg:#e9eef5;--line:#d8e0ea;--key-op:#dce4ee;--rule:#e4
 .filter-chip .fmin{font-size:13px;padding:2px 9px;border:1px solid var(--accent);border-radius:999px;background:transparent}
 .filter-chip .fmin.on{background:var(--accent);color:var(--on-accent)}
 .big-go{display:block;width:100%;margin:6px 0 2px;padding:9px 0;text-align:center;font:inherit;font-size:14px;color:var(--accent);background:var(--accent-soft);border-radius:10px}
+.theme-seg{margin:0;width:210px}.theme-seg button{font-size:13px}
 .toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);background:var(--text);color:var(--bg);
   padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -688,6 +697,12 @@ html[data-season=winter]{--bg:#e9eef5;--line:#d8e0ea;--key-op:#dce4ee;--rule:#e4
     <!-- 設定 -->
     <section class="view" id="v-set">
       <div class="banner" id="installHint" hidden>要離線使用：在 Safari 按「分享」→「加入主畫面」，之後從主畫面圖示開啟。</div>
+      <div class="group-h">外觀</div>
+      <div class="group">
+        <div class="item"><span>主題</span><div class="seg theme-seg" id="themeSeg"><button data-t="auto">跟隨系統</button><button data-t="light">淺色</button><button data-t="dark">深色</button></div></div>
+      </div>
+      <p class="note-text">只影響這個瀏覽器，電腦和手機可以各自設定。</p>
+
       <div class="group-h">資料</div>
       <div class="group">
         <button class="item accent" id="btnExport">匯出備份<small id="lastExport"></small></button>

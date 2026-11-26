@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.27.0';
+const VERSION = '1.28.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -791,6 +791,7 @@ function renderList() {
     $('#monthLabel').textContent = periodLabel(f.period);
     $('#monthPick').value = f.period.length === 7 ? f.period : '';
     $('#filterMin').classList.toggle('on', !!f.min);
+    $('#filterBack').hidden = !f.back;
     items = live().filter((t) => t.date.startsWith(f.period) && (t.subcategoryId === f.id || t.categoryId === f.id) && (!f.min || t.amount >= f.min));
   } else if (q) {
     items = live().filter((t) => (t.note || '').includes(q) || catName(t.subcategoryId).includes(q) || catName(t.categoryId).includes(q));
@@ -1463,7 +1464,7 @@ function renderStats() {
   renderTrend();
 }
 function openCategoryList(id, min = 0) {
-  S.filter = { id, period: ST.period, min };
+  S.filter = { id, period: ST.period, min, back: { scroll: $('main').scrollTop } };   // back：回統計時還原捲動位置
   switchView('v-list');
 }
 function bindStats() {
@@ -1752,6 +1753,9 @@ function bind() {
   setupSwipe();
   setupMonthPop();
   setupTheme();
+  $('#filterBack').addEventListener('click', () => {   // 回到剛剛看統計的位置（同一期、同一個展開的大類）
+    const sc = S.filter?.back?.scroll || 0; S.filter = null; switchView('v-stat'); $('main').scrollTop = sc;
+  });
   $('#filterClear').addEventListener('click', () => { S.filter = null; renderList(); });
   $('#filterMin').addEventListener('click', () => { if (S.filter) { S.filter.min = S.filter.min ? 0 : BIG_MIN; S.listLimit = 300; renderList(); } });
   bindStats();

@@ -585,6 +585,15 @@ html[data-season=winter]{--bg:#e9eef5;--line:#d8e0ea;--key-op:#dce4ee;--rule:#e4
 .day-wrap .day-inline,.day-wrap .more-hint{z-index:1}
 .day-inline .di-empty{align-items:flex-start;padding-top:16px}
 @media (prefers-color-scheme: dark){.season-deco{opacity:.35}.dh-art{opacity:.5}.dh-art [fill="#fff"]{fill:#2a3331}}
+/* 桌機選月份（瀏覽器內建的 month 選單在桌機常常點了沒反應） */
+@media (pointer:fine){.month-title input{pointer-events:none}.month-title{cursor:pointer}}
+.mpop{position:fixed;z-index:70;width:244px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;box-shadow:0 8px 28px rgba(0,0,0,.18)}
+.mp-head{display:flex;gap:6px;margin-bottom:8px}
+.mp-head select{flex:1;min-width:0;font:inherit;font-size:15px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text)}
+.mp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.mp-grid button{font:inherit;font-size:14px;padding:9px 0;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);cursor:pointer}
+.mp-grid button:hover{border-color:var(--accent)}
+.mp-grid button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);background:var(--text);color:var(--bg);
   padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -750,6 +759,7 @@ html[data-season=winter]{--bg:#e9eef5;--line:#d8e0ea;--key-op:#dce4ee;--rule:#e4
 <div class="drawer" id="dayDrawer" role="dialog" aria-label="當天紀錄"><div class="drawer-h"><b>當天紀錄</b><button data-close>關閉</button></div><div class="drawer-b" id="dayList"></div></div>
 <div class="toast" id="toast"></div>
 <div class="mask" id="mask">處理中…</div>
+<div class="mpop" id="mpop" hidden><div class="mp-head"><select id="mpYear" aria-label="年"></select></div><div class="mp-grid" id="mpGrid"></div></div>
 <script src="app.js"></script>
 </body>
 </html>

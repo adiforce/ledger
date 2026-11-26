@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '1.23.0';
+const VERSION = '1.24.0';
 
 /* ── 預設分類（跟轉換腳本同一套 ID，匯入時會對上）── */
 const DEFAULT_TREE = {
@@ -1744,6 +1744,7 @@ function bind() {
   $('#search').addEventListener('input', (e) => { clearTimeout(st); st = setTimeout(() => { S.query = e.target.value; S.listLimit = 300; renderList(); }, 200); });
   $('#backupBanner').addEventListener('click', (e) => { if (e.target.id === 'bannerExport') exportData(); });
   setupSwipe();
+  setupMonthPop();
   $('#filterClear').addEventListener('click', () => { S.filter = null; renderList(); });
   bindStats();
   bindImport();
@@ -1765,6 +1766,52 @@ function bind() {
   $('#catEditExp').addEventListener('click', catAction);
   $('#catEditInc').addEventListener('click', catAction);
   $('#catActBody').addEventListener('click', onSubAction);
+}
+/* 桌機選月份：用自己的年／月選單；手機維持原生滾輪 */
+function setupMonthPop() {
+  if (!window.matchMedia('(pointer:fine)').matches) return;
+  const pop = $('#mpop'), sel = $('#mpYear'), grid = $('#mpGrid');
+  let cur = null;
+  const close = () => { pop.hidden = true; cur = null; };
+  const draw = () => {
+    const [, m] = cur.get().split('-').map(Number);
+    const sy = Number(sel.value), [cy] = cur.get().split('-').map(Number);
+    grid.innerHTML = Array.from({ length: 12 }, (_, i) =>
+      `<button data-m="${i + 1}" class="${sy === cy && i + 1 === m ? 'on' : ''}">${i + 1} 月</button>`).join('');
+  };
+  const open = (label, target) => {
+    cur = target;
+    const now = new Date().getFullYear();
+    const years = live().map((t) => Number(t.date.slice(0, 4)));
+    const lo = Math.min(now, ...years), hi = Math.max(now + 1, ...years);
+    sel.innerHTML = '';
+    for (let y = hi; y >= lo; y--) sel.insertAdjacentHTML('beforeend', `<option value="${y}">${y} 年</option>`);
+    sel.value = cur.get().split('-')[0];
+    draw();
+    const r = label.getBoundingClientRect();
+    pop.hidden = false;
+    pop.style.top = `${r.bottom + 6}px`;
+    pop.style.left = `${Math.max(8, Math.min(innerWidth - 252, r.left + r.width / 2 - 122))}px`;
+  };
+  sel.addEventListener('change', draw);
+  grid.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-m]');
+    if (!b || !cur) return;
+    const v = `${sel.value}-${pad(Number(b.dataset.m))}`;
+    const set = cur.set; close(); set(v);
+  });
+  document.addEventListener('mousedown', (e) => { if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.month-title')) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  const hook = (inputSel, make) => {
+    const label = $(inputSel).closest('label');
+    label.addEventListener('click', (e) => {
+      const t = make(); if (!t) return;
+      e.preventDefault();
+      if (!pop.hidden) close(); else open(label, t);
+    });
+  };
+  hook('#monthPick', () => ({ get: () => S.month, set: (v) => { S.month = v; S.listLimit = 300; renderList(); } }));
+  hook('#statPick', () => ST.mode !== 'month' ? null : ({ get: () => ST.period, set: (v) => { ST.period = v; keepInWindow(); renderStats(); } }));
 }
 function shiftMonth(d) {
   const [y, m] = S.month.split('-').map(Number);
